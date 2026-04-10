@@ -76,7 +76,7 @@ Store reports in Supabase database for future reference
 Frontend: React and Tailwind CSS
 Backend: Node.js and Express
 Reasoning AI/LLM: OpenAI API GPT
-Voice Conversation: Gemini Live API
+Voice Conversation: ElevenLabs API
 OCR: Google Vision / Document AI
 OTP: Twilio
 DB: Supabase
@@ -128,8 +128,8 @@ TWILIO_PHONE_NUMBER=
 OpenAI (LLM analysis)
 OPENAI_API_KEY=
 
-Google Gemini (voice)
-GEMINI_API_KEY=
+ElevenLabs (voice)
+ELEVENLABS_API_KEY=
 
 Google Vision/Document AI (OCR)
 GOOGLE_CLOUD_API_KEY=

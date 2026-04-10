@@ -1,0 +1,20 @@
+{
+  "app_name": "MediTrack",
+  "welcome": "Welcome to MediTrack",
+  "tagline": "Your medical reports, explained simply",
+  "phone_label": "Mobile Number",
+  "phone_placeholder": "Enter your 10-digit mobile number",
+  "send_otp": "Send OTP",
+  "sending": "Sending...",
+  "otp_label": "Enter OTP",
+  "otp_placeholder": "6-digit code sent to your phone",
+  "verify_otp": "Verify & Login",
+  "verifying": "Verifying...",
+  "resend_otp": "Resend OTP",
+  "otp_sent": "OTP sent to +91{{phone}}",
+  "change_number": "Change number",
+  "invalid_phone": "Enter a valid 10-digit Indian mobile number",
+  "invalid_otp": "Enter the 6-digit OTP",
+  "error_generic": "Something went wrong. Please try again.",
+  "lang_switch": "हिंदी"
+}
