@@ -15,13 +15,31 @@ RESPONSE LENGTH — STRICT:
 - Count your words mentally before responding and trim if needed.
 - This applies to every message including greetings, clarifying questions, and answers.`
 
+const FORMATTING_RULE = `
+FORMATTING:
+- When a response contains multiple points or a list, use plain numbered format: "1. First point. 2. Second point. 3. Third point." — no dashes, no asterisks, no markdown symbols.
+- This format reads naturally when spoken aloud.
+- For single-point answers, use a plain sentence — no numbering needed.`
+
+// Returns a human-readable date label for a report, e.g. "15 Mar 2025" or "uploaded 10 Apr 2025"
+function reportDateLabel(r) {
+  if (r.report_date) {
+    return new Date(r.report_date).toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'long', year: 'numeric',
+    })
+  }
+  return `uploaded ${new Date(r.uploaded_at).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })}`
+}
+
 export function buildCombinedChatSystemPrompt(reportsWithAnalysis, userName, isFirstMessage) {
   if (!reportsWithAnalysis.length) {
     return `You are MediTrack's health assistant. The user has no analysed reports yet. Let them know they need to upload and analyse a report before you can answer questions about their health.${RESPONSE_LENGTH_RULE}`
   }
 
   const reportBlocks = reportsWithAnalysis
-    .map((r, i) => {
+    .map((r) => {
       const tests = Array.isArray(r.structured_data)
         ? r.structured_data
             .map(
@@ -43,7 +61,10 @@ export function buildCombinedChatSystemPrompt(reportsWithAnalysis, userName, isF
           ? r.analysis.suggestions.map((s) => `  - ${s}`).join('\n')
           : '  None'
 
-      return `--- Report ${i + 1}: ${r.file_name} (uploaded ${new Date(r.uploaded_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}) ---
+      const dateLabel = reportDateLabel(r)
+      const unknownFlag = r.report_date ? '' : ' [date unknown — use uploaded date when referencing this report]'
+
+      return `--- Report: ${r.file_name} (${dateLabel})${unknownFlag} ---
 Test Results:
 ${tests}
 Abnormal Values:
@@ -57,18 +78,19 @@ ${suggestions}`
   return `You are MediTrack's friendly health assistant for Indian patients. The user has ${reportsWithAnalysis.length} medical report(s) on file.
 ${NAME_RULES(userName, isFirstMessage)}
 ${RESPONSE_LENGTH_RULE}
+${FORMATTING_RULE}
 
 ${reportBlocks}
 
 INSTRUCTIONS:
-- Answer questions about any or all reports. When referencing a specific report, mention it by file name so the user knows which one you mean.
-- If a question touches multiple reports, address all relevant ones and highlight any patterns or trends across them.
+- When referencing a specific report, ALWAYS refer to it by its date — for example "your 15 March 2025 report" or "in your June 2025 report". Never say "Report 1" or "Report 2".
+- If the report date is unknown, say "your report uploaded on [date]" instead.
+- If a question touches multiple reports, address all relevant ones and highlight patterns or trends across them.
 - If it is unclear which report the user is asking about, ask a short clarifying question before answering.
 - Detect the language of each user message and reply in the SAME language — English or Hindi (Devanagari script).
 - Write at a Class 8 reading level. Explain medical terms in plain words immediately after using them.
 - Be warm and reassuring — users may be anxious about their results.
-- Never diagnose or prescribe. Say "please consult your doctor" for anything clinical.
-- Use natural sentences. Avoid bullet points or lists.`
+- Never diagnose or prescribe. Say "please consult your doctor" for anything clinical.`
 }
 
 export function buildChatSystemPrompt(report, analysis, userName, isFirstMessage) {
@@ -93,11 +115,14 @@ export function buildChatSystemPrompt(report, analysis, userName, isFirstMessage
       ? analysis.suggestions.map((s) => `  - ${s}`).join('\n')
       : 'None'
 
+  const dateLabel = reportDateLabel(report)
+
   return `You are MediTrack's friendly medical report assistant helping patients in India understand their lab results.
 ${NAME_RULES(userName, isFirstMessage)}
 ${RESPONSE_LENGTH_RULE}
+${FORMATTING_RULE}
 
-REPORT CONTEXT:
+REPORT CONTEXT (${dateLabel}):
 Test Results:
 ${tests}
 
@@ -111,11 +136,11 @@ ${suggestions}
 
 INSTRUCTIONS:
 - Answer questions ONLY about this specific report. If asked about something unrelated, politely redirect.
+- When referencing this report, say "your ${dateLabel} report" — never "the report" or "Report 1".
 - Detect the language of each user message and reply in the SAME language — English or Hindi (Devanagari script).
 - Write at a Class 8 reading level. Explain medical terms in simple words.
 - Never use jargon without immediately explaining it in plain language.
 - Be warm and reassuring. These are elderly or non-technical users who may be anxious.
 - If a value is abnormal, explain what it means simply and suggest they discuss it with their doctor.
-- Never diagnose conditions or prescribe medication. Say "please consult your doctor" for anything clinical.
-- Use natural sentences. Avoid bullet points or lists.`
+- Never diagnose conditions or prescribe medication. Say "please consult your doctor" for anything clinical.`
 }

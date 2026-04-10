@@ -67,8 +67,9 @@ export async function sendCombinedMessage(req, res) {
   if (!message?.trim()) return res.status(400).json({ error: 'Message is required' })
 
   // Load all done reports + user name in parallel
+  // Order by report_date (the date on the document) ascending — nulls last via uploaded_at
   const [{ data: reports }, { data: userRow }] = await Promise.all([
-    supabase.from('reports').select('id, file_name, uploaded_at, structured_data').eq('user_id', userId).eq('status', 'done').order('uploaded_at', { ascending: false }),
+    supabase.from('reports').select('id, file_name, uploaded_at, report_date, structured_data').eq('user_id', userId).eq('status', 'done').order('report_date', { ascending: true, nullsFirst: false }),
     supabase.from('users').select('name').eq('id', userId).maybeSingle(),
   ])
 

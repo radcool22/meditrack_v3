@@ -24,7 +24,9 @@ ${rawText}
 
 TASK: Return a single valid JSON object with exactly two top-level keys: "structured_data" and "analysis".
 
-"structured_data" must be an array of objects, one per test result found:
+"structured_data" must be an object with two keys:
+- "report_date": the date of the report as printed on the document (look for labels like "Date", "Report Date", "Collection Date", "Sample Collection Date", "Reporting Date" — return as "YYYY-MM-DD" string, or null if not found or unreadable)
+- "tests": an array of objects, one per test result found:
 {
   "test": "full test name as printed",
   "value": "result value as printed",
@@ -62,6 +64,7 @@ ${langInstruction}
 Rules:
 - Only include tests that have a result value
 - Do not fabricate values — use only what is in the raw text
+- For report_date: look for any date label on the document; return null if genuinely not found — do not guess
 - abnormal_values should only contain tests flagged HIGH, LOW, or ABNORMAL
 - suggestions must be practical and specific, not generic ("see a doctor" alone is not enough)
 - Return ONLY the JSON object — no markdown fences, no explanation text`

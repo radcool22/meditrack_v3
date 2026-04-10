@@ -1,18 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const STATUS_STYLES = {
-  pending:    'bg-[#f5f5f5] text-[#8e8e8e]',
-  processing: 'bg-yellow-50 text-yellow-700',
-  done:       'bg-[#bbf451]/20 text-[#181818]',
-  failed:     'bg-red-50 text-red-600',
-}
-
-const STATUS_LABELS = {
-  pending:    'Pending',
-  processing: 'Processing',
-  done:       'Ready',
-  failed:     'Failed',
+function formatReportDate(report) {
+  const src = report.report_date ?? report.uploaded_at
+  return new Date(src).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  })
 }
 
 export default function ReportCard({ report, onDelete }) {
@@ -20,9 +13,9 @@ export default function ReportCard({ report, onDelete }) {
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const date = new Date(report.uploaded_at).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric',
-  })
+  const dateLabel = formatReportDate(report)
+  const isProcessing = report.status === 'processing' || report.status === 'pending'
+  const isDone = report.status === 'done'
 
   async function handleDelete(e) {
     e.stopPropagation()
@@ -52,14 +45,35 @@ export default function ReportCard({ report, onDelete }) {
         </span>
         <div className="min-w-0">
           <p className="text-sm font-medium text-[#181818] truncate">{report.file_name}</p>
-          <p className="text-xs text-[#8e8e8e] mt-0.5">{date}</p>
+          <p className="text-xs text-[#8e8e8e] mt-0.5">{dateLabel}</p>
         </div>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
-        <span className={`text-xs font-medium rounded px-2 py-0.5 ${STATUS_STYLES[report.status] ?? STATUS_STYLES.pending}`}>
-          {STATUS_LABELS[report.status] ?? report.status}
-        </span>
+        {/* Status indicator — spinner while processing, green badge when done */}
+        {isProcessing && (
+          <div className="w-4 h-4 border-2 border-[#e0e0e0] border-t-[#181818] rounded-full animate-spin" />
+        )}
+        {isDone && (
+          <span className="text-xs font-medium bg-[#bbf451]/20 text-[#181818] rounded px-2 py-0.5">
+            Ready
+          </span>
+        )}
+        {report.status === 'failed' && (
+          <span className="text-xs font-medium bg-red-50 text-red-600 rounded px-2 py-0.5">
+            Failed
+          </span>
+        )}
+
+        {/* Report Summary button — only when done */}
+        {isDone && !confirming && (
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate(`/report/${report.id}?autoSpeak=1`) }}
+            className="text-xs font-medium text-[#181818] border border-[#e0e0e0] rounded px-2 py-1 hover:bg-[#f5f5f5] transition-colors"
+          >
+            Summary
+          </button>
+        )}
 
         {confirming ? (
           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>

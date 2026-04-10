@@ -27,6 +27,21 @@ export function useReports() {
     if (token) fetchReports()
   }, [fetchReports, token])
 
+  // Trigger analysis for a single report and update its status in state
+  const triggerAnalysis = useCallback(async (reportId) => {
+    try {
+      await axios.post(`/api/analysis/${reportId}`, {}, { headers: authHeaders })
+      // Mark done
+      setReports((prev) =>
+        prev.map((r) => (r.id === reportId ? { ...r, status: 'done' } : r))
+      )
+    } catch {
+      setReports((prev) =>
+        prev.map((r) => (r.id === reportId ? { ...r, status: 'failed' } : r))
+      )
+    }
+  }, [token])
+
   async function upload(file, onProgress) {
     const form = new FormData()
     form.append('report', file)
@@ -36,8 +51,12 @@ export function useReports() {
         if (onProgress) onProgress(Math.round((e.loaded * 100) / e.total))
       },
     })
-    setReports((prev) => [data.report, ...prev])
-    return data.report
+    const report = data.report
+    // Add as 'processing' immediately so the spinner shows
+    setReports((prev) => [{ ...report, status: 'processing' }, ...prev])
+    // Fire analysis in background — no await
+    triggerAnalysis(report.id)
+    return report
   }
 
   async function deleteReport(id) {

@@ -77,12 +77,20 @@ export async function runAnalysis(req, res) {
     })
 
     const parsed = JSON.parse(completion.choices[0].message.content)
-    const { structured_data, analysis } = parsed
+    const { structured_data: structuredRaw, analysis } = parsed
 
-    // 7. Save structured data + mark done
+    // Extract report_date and tests array from structured_data
+    const reportDate   = structuredRaw?.report_date ?? null   // "YYYY-MM-DD" or null
+    const testsArray   = Array.isArray(structuredRaw?.tests) ? structuredRaw.tests
+                       : Array.isArray(structuredRaw) ? structuredRaw  // backwards compat
+                       : []
+    // Store tests array as structured_data for downstream consumers
+    const structured_data = testsArray
+
+    // 7. Save structured data + report_date + mark done
     await supabase
       .from('reports')
-      .update({ structured_data, status: 'done' })
+      .update({ structured_data, report_date: reportDate, status: 'done' })
       .eq('id', reportId)
 
     // 8. Insert analysis row

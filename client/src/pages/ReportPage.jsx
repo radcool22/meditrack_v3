@@ -1,5 +1,7 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAnalysis } from '../hooks/useAnalysis'
+import { useVoice } from '../hooks/useVoice'
 
 const FLAG_STYLES = {
   HIGH:     'bg-red-50 text-red-600 border-red-200',
@@ -19,9 +21,29 @@ function Spinner() {
 export default function ReportPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const autoSpeak = searchParams.get('autoSpeak') === '1'
+
   const { analysis, status, loading, error, retry } = useAnalysis(id)
+  const { connect, speak } = useVoice()
+
+  const hasSpoken = useRef(false)
+
+  // Auto-speak summary when ?autoSpeak=1 and analysis is ready
+  useEffect(() => {
+    if (!autoSpeak || !analysis?.summary || hasSpoken.current) return
+    hasSpoken.current = true
+    // connect() unlocks AudioContext on the navigation gesture
+    connect()
+    speak(analysis.summary, 'en-IN')
+  }, [autoSpeak, analysis?.summary])
 
   const isProcessing = status === 'processing' || (status === 'pending' && !analysis)
+
+  // Format report date for heading
+  const reportDateLabel = analysis
+    ? null // will use date from report row — not available here, heading stays generic
+    : null
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] font-sans">
@@ -100,7 +122,7 @@ export default function ReportPage() {
               </section>
             )}
 
-            {/* All clear if no abnormal values */}
+            {/* All clear */}
             {analysis.abnormal_values?.length === 0 && (
               <section className="bg-[#bbf451]/10 border border-[#bbf451] rounded-xl px-5 py-4">
                 <p className="text-sm font-medium text-[#181818]">
@@ -125,7 +147,6 @@ export default function ReportPage() {
                 </ul>
               </section>
             )}
-
           </>
         )}
       </main>
