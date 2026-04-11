@@ -39,6 +39,7 @@
   "your_reports": "Your Reports",
 
   "ask_about_report": "Ask about this report",
+  "report_chat_greeting": "I'm here to answer your questions about this report specifically. What would you like to know?",
   "voice": "Voice",
   "text": "Text",
   "loading_conversation": "Loading conversation…",

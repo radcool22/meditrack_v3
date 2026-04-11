@@ -1,6 +1,6 @@
 import supabase from '../services/supabase.js'
 import openai from '../services/openai.js'
-import { buildChatSystemPrompt, buildCombinedChatSystemPrompt } from '../services/prompts/chat.js'
+import { buildChatSystemPrompt, buildCombinedChatSystemPrompt, buildReportPageChatSystemPrompt } from '../services/prompts/chat.js'
 
 export async function sendMessage(req, res) {
   const { reportId } = req.params
@@ -130,6 +130,90 @@ export async function getHistory(req, res) {
 
   if (error) {
     console.error('Chat history error:', error.message)
+    return res.status(500).json({ error: 'Failed to load history' })
+  }
+
+  return res.json({ messages: messages ?? [] })
+}
+
+// ── Report-page restricted chat (is_report_chat = true) ───────────────
+
+export async function sendReportChatMessage(req, res) {
+  const { reportId } = req.params
+  const { userId } = req.user
+  const { message, history = [] } = req.body
+
+  if (!message?.trim()) {
+    return res.status(400).json({ error: 'Message is required' })
+  }
+
+  const [{ data: report }, { data: userRow }] = await Promise.all([
+    supabase.from('reports').select('id, structured_data, status, report_date, uploaded_at').eq('id', reportId).eq('user_id', userId).maybeSingle(),
+    supabase.from('users').select('name').eq('id', userId).maybeSingle(),
+  ])
+
+  if (!report) return res.status(404).json({ error: 'Report not found' })
+  if (report.status !== 'done') {
+    return res.status(400).json({ error: 'Report analysis is not ready yet' })
+  }
+
+  const { data: analysis } = await supabase
+    .from('report_analyses')
+    .select('summary, abnormal_values, suggestions')
+    .eq('report_id', reportId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const userName       = userRow?.name?.split(' ')[0] ?? null
+  const isFirstMessage = history.length === 0
+  const systemPrompt   = buildReportPageChatSystemPrompt(report, analysis, userName, isFirstMessage)
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history.map((m) => ({ role: m.role, content: m.content })),
+    { role: 'user', content: message.trim() },
+  ]
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages,
+    temperature: 0.4,
+    max_tokens: 400,
+  })
+
+  const reply = completion.choices[0].message.content
+
+  await supabase.from('chat_messages').insert([
+    { report_id: reportId, user_id: userId, role: 'user', content: message.trim(), message_type: 'text' },
+    { report_id: reportId, user_id: userId, role: 'assistant', content: reply, message_type: 'text' },
+  ])
+
+  return res.json({ reply })
+}
+
+export async function getReportChatHistory(req, res) {
+  const { reportId } = req.params
+  const { userId } = req.user
+
+  const { data: report } = await supabase
+    .from('reports')
+    .select('id')
+    .eq('id', reportId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!report) return res.status(404).json({ error: 'Report not found' })
+
+  const { data: messages, error } = await supabase
+    .from('chat_messages')
+    .select('id, role, content, message_type, created_at')
+    .eq('report_id', reportId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Report chat history error:', error.message)
     return res.status(500).json({ error: 'Failed to load history' })
   }
 

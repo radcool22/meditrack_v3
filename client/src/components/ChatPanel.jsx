@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChat } from '../hooks/useChat'
 import { useCombinedChat } from '../hooks/useCombinedChat'
+import { useReportChat } from '../hooks/useReportChat'
 import { useVoice } from '../hooks/useVoice'
 import { useLanguage } from '../context/LanguageContext'
 
@@ -44,15 +45,15 @@ function MessageBubble({ msg }) {
 
 const VOICE_MIC_STYLES = {
   idle:      'bg-teal-700 text-white hover:bg-teal-600',
-  ready:     'bg-teal-700 text-white hover:bg-teal-600',
-  listening: 'bg-green-500 text-white',
+  ready:     'text-white',
+  listening: 'text-white',
   thinking:  'bg-ink-200 text-ink-400',
   speaking:  'bg-ink-200 text-ink-400',
   error:     'bg-teal-700 text-white hover:bg-teal-600',
 }
 
 // ── Main component ───────────────────────────────────────────────────
-export default function ChatPanel({ reportId }) {
+export default function ChatPanel({ reportId, isReportChat = false, greetingMessage = null }) {
   const { t } = useTranslation()
   const { language } = useLanguage()
   const voiceLang = language === 'hi' ? 'hi-IN' : 'en-IN'
@@ -60,10 +61,19 @@ export default function ChatPanel({ reportId }) {
   const [mode, setMode] = useState('voice') // 'text' | 'voice'
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
+  const autoListenRef = useRef(false) // flag: start listening as soon as ready
 
-  const singleChat = useChat(reportId ?? null)
+  const singleChat = useChat(isReportChat ? null : (reportId ?? null))
   const combinedChat = useCombinedChat()
-  const { messages, loading, sending, error: chatError, sendMessage } = reportId ? singleChat : combinedChat
+  const reportPageChat = useReportChat(isReportChat ? reportId : null)
+
+  const activeHook = isReportChat ? reportPageChat : (reportId ? singleChat : combinedChat)
+  const { messages: rawMessages, loading, sending, error: chatError, sendMessage } = activeHook
+
+  // Inject greeting as first message when history is empty after loading
+  const messages = !loading && rawMessages.length === 0 && greetingMessage
+    ? [{ id: 'greeting', role: 'assistant', content: greetingMessage, message_type: 'text' }]
+    : rawMessages
   const { voiceState, errorMsg: voiceError, connect, disconnect, startListening, stopListening, speak } =
     useVoice()
 
@@ -80,6 +90,17 @@ export default function ChatPanel({ reportId }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, sending])
 
+  // Auto-start listening once AudioContext is ready (after connect())
+  useEffect(() => {
+    if (voiceState === 'ready' && autoListenRef.current) {
+      autoListenRef.current = false
+      startListening(async (transcript) => {
+        const reply = await sendMessage(transcript)
+        if (reply) speak(reply, voiceLang)
+      }, voiceLang)
+    }
+  }, [voiceState])
+
   function switchMode(next) {
     if (next === 'text' && mode === 'voice') disconnect()
     setMode(next)
@@ -92,8 +113,10 @@ export default function ChatPanel({ reportId }) {
     setInput('')
   }
 
-  async function handleMicTap() {
+  function handleMicTap() {
     if (voiceState === 'idle' || voiceState === 'error') {
+      // First tap: unlock AudioContext then immediately start listening
+      autoListenRef.current = true
       connect()
       return
     }
@@ -111,7 +134,7 @@ export default function ChatPanel({ reportId }) {
   }
 
   const micDisabled = voiceState === 'thinking' || voiceState === 'speaking'
-  const isListeningPulse = voiceState === 'listening'
+  const micActive = voiceState === 'ready' || voiceState === 'listening'
 
   return (
     <section className="bg-card border border-ink-200/60 rounded-2xl shadow-sm overflow-hidden">
@@ -120,22 +143,26 @@ export default function ChatPanel({ reportId }) {
         <h2 className="text-[13px] font-semibold uppercase tracking-widest text-teal-100/70 mb-3">
           {t('ask_about_report')}
         </h2>
-        <div className="flex bg-white/10 rounded-xl p-1">
+        <div className="flex bg-white/10 rounded-2xl p-1.5 gap-1.5">
           <button
             onClick={() => switchMode('voice')}
-            className={`flex-1 flex items-center justify-center gap-1.5 text-[14px] font-semibold py-2.5 rounded-lg transition-all ${
-              mode === 'voice' ? 'bg-white text-teal-900 shadow-sm' : 'text-white/70 hover:text-white'
+            className={`flex-1 flex items-center justify-center gap-2 text-[17px] font-bold py-3.5 rounded-xl transition-all ${
+              mode === 'voice'
+                ? 'bg-teal-600 text-white shadow-md'
+                : 'bg-white/15 text-white/60 hover:bg-white/25 hover:text-white'
             }`}
           >
             {t('voice')}
             {mode === 'voice' && voiceState === 'listening' && (
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
             )}
           </button>
           <button
             onClick={() => switchMode('text')}
-            className={`flex-1 text-[14px] font-semibold py-2.5 rounded-lg transition-all ${
-              mode === 'text' ? 'bg-white text-teal-900 shadow-sm' : 'text-white/70 hover:text-white'
+            className={`flex-1 text-[17px] font-bold py-3.5 rounded-xl transition-all ${
+              mode === 'text'
+                ? 'bg-teal-600 text-white shadow-md'
+                : 'bg-white/15 text-white/60 hover:bg-white/25 hover:text-white'
             }`}
           >
             {t('text')}
@@ -205,9 +232,10 @@ export default function ChatPanel({ reportId }) {
               onClick={handleMicTap}
               disabled={micDisabled}
               aria-label={VOICE_LABELS[voiceState]}
+              style={micActive ? { backgroundColor: '#FF6B4A' } : undefined}
               className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-200 disabled:cursor-not-allowed shadow-lg ${
                 VOICE_MIC_STYLES[voiceState]
-              } ${isListeningPulse ? 'animate-pulse' : ''}`}
+              } ${micActive ? 'animate-pulse' : ''}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-9 h-9">
                 <path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4Z" />
@@ -216,9 +244,7 @@ export default function ChatPanel({ reportId }) {
             </button>
 
             {voiceState === 'listening' && (
-              <p className="text-[13px] font-semibold text-white bg-green-500 px-4 py-1.5 rounded-full">
-                {t('mic_listening_stop')}
-              </p>
+              <p className="text-[13px] font-medium text-ink-400">{t('mic_listening_stop')}</p>
             )}
             {voiceState === 'thinking' && (
               <p className="text-[13px] font-medium text-ink-400">{t('mic_getting_answer')}</p>

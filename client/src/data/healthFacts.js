@@ -1,0 +1,28 @@
+const healthFacts = [
+  'People who track their health catch serious conditions 3 years earlier on average.',
+  'Regular health monitoring reduces hospitalisation risk by up to 40 percent globally.',
+  'Patients who review reports regularly live on average 7 years longer.',
+  'Knowing your numbers cuts your risk of a surprise heart attack by half.',
+  'Over 80 percent of chronic diseases are detectable early via routine blood tests.',
+  'People who monitor their weight weekly are 3 times more likely to maintain it.',
+  'Tracking blood pressure daily reduces stroke risk by 30 percent over five years.',
+  'Patients with digital health records receive 20 percent faster and more accurate diagnoses.',
+  'Regular cholesterol checks prevent more than 1 million heart attacks every single year.',
+  'Wearable trackers detect irregular heartbeats in over 84 percent of users who wear them.',
+  'People who track sleep quality report 40 percent better focus and cognitive performance daily.',
+  'Just 10 minutes of daily health tracking cuts anxiety about illness by 35 percent.',
+  'Early detection through routine tests reduces cancer treatment costs by more than 60 percent.',
+  'People who share health data with doctors have 25 percent fewer emergency room visits.',
+  'Monitoring vitamin D levels reduces depression risk by up to 50 percent in adults.',
+  'Regular kidney function checks catch chronic kidney disease 5 years before symptoms appear typically.',
+  'Blood sugar monitoring reduces diabetes complications by 76 percent in consistent self-trackers worldwide.',
+  'Tracking your resting heart rate can reveal illness or stress days in advance.',
+  'People who log their health metrics are twice as likely to achieve their fitness goals.',
+  'Routine thyroid checks catch underactive thyroid in 1 in every 20 Indian adults tested.',
+  'Liver function tests detect fatty liver disease in over 30 percent of asymptomatic adults.',
+  'Knowing your haemoglobin level helps prevent iron deficiency anaemia, affecting 1 billion people worldwide.',
+  'Uric acid monitoring prevents gout flare-ups in 90 percent of people who track consistently.',
+  'People aware of their BMI trends are 2 times less likely to develop obesity.',
+]
+
+export default healthFacts

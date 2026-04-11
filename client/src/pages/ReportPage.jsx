@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useVoice } from '../hooks/useVoice'
 import LangToggle from '../components/LangToggle'
+import ChatPanel from '../components/ChatPanel'
 
 const FLAG_STYLES = {
   HIGH:     'bg-red-50 border-red-200',
@@ -158,6 +159,24 @@ export default function ReportPage() {
               </section>
             )}
           </>
+        )}
+
+        {/* Report-specific chat — only shown once analysis is ready */}
+        {analysis && (
+          <section>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex-1 h-px bg-ink-200/60" />
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-400 shrink-0">
+                {t('ask_about_report')}
+              </h2>
+              <div className="flex-1 h-px bg-ink-200/60" />
+            </div>
+            <ChatPanel
+              reportId={id}
+              isReportChat={true}
+              greetingMessage={t('report_chat_greeting')}
+            />
+          </section>
         )}
       </main>
     </div>

@@ -5,15 +5,21 @@ import { generateOtp, isValidIndianPhone } from '../utils/otp.js'
 
 export async function updateProfile(req, res) {
   const { userId } = req.user
-  const { name } = req.body
+  const { name, language_preference } = req.body
 
-  if (!name?.trim()) {
-    return res.status(400).json({ error: 'Name is required' })
+  const updates = {}
+  if (name?.trim()) updates.name = name.trim()
+  if (language_preference === 'en' || language_preference === 'hi') {
+    updates.language_preference = language_preference
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: 'No valid fields to update' })
   }
 
   const { data: user, error } = await supabase
     .from('users')
-    .update({ name: name.trim() })
+    .update(updates)
     .eq('id', userId)
     .select('id, phone_number, name, language_preference')
     .single()

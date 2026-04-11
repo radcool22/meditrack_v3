@@ -30,25 +30,27 @@ export async function runAnalysis(req, res) {
     return res.status(409).json({ error: 'Analysis already in progress' })
   }
 
-  if (report.status === 'done') {
-    // Return existing analysis instead of rerunning
-    const { data: existing } = await supabase
-      .from('report_analyses')
-      .select('*')
-      .eq('report_id', reportId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    if (existing) return res.json({ analysis: existing })
-  }
-
-  // 2. Fetch user language preference
+  // 2. Fetch user language preference first (needed for cache check too)
   const { data: user } = await supabase
     .from('users')
     .select('language_preference')
     .eq('id', userId)
     .single()
   const language = user?.language_preference ?? 'en'
+
+  if (report.status === 'done') {
+    // Return cached analysis only if it matches the user's current language
+    const { data: existing } = await supabase
+      .from('report_analyses')
+      .select('*')
+      .eq('report_id', reportId)
+      .eq('language', language)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (existing) return res.json({ analysis: existing })
+    // Language mismatch — fall through to re-run analysis in the correct language
+  }
 
   // 3. Mark as processing
   await supabase
@@ -136,13 +138,29 @@ export async function getAnalysis(req, res) {
 
   if (!report) return res.status(404).json({ error: 'Report not found' })
 
+  // Fetch user language so we serve the right language version
+  const { data: user } = await supabase
+    .from('users')
+    .select('language_preference')
+    .eq('id', userId)
+    .single()
+  const language = user?.language_preference ?? 'en'
+
+  // Look for analysis in the user's current language
   const { data: analysis } = await supabase
     .from('report_analyses')
     .select('*')
     .eq('report_id', reportId)
+    .eq('language', language)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  return res.json({ status: report.status, analysis: analysis ?? null })
+  if (analysis) {
+    return res.json({ status: report.status, analysis })
+  }
+
+  // No language-matched analysis — signal pending so client re-triggers
+  // (the POST /api/analysis/:reportId will re-run in the correct language)
+  return res.json({ status: 'pending', analysis: null })
 }
