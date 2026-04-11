@@ -1,23 +1,19 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const ALLOWED = ['application/pdf', 'image/jpeg', 'image/png']
 const LABELS = { 'application/pdf': 'PDF', 'image/jpeg': 'JPG', 'image/png': 'PNG' }
 
 export default function UploadZone({ onUpload }) {
+  const { t } = useTranslation()
   const inputRef = useRef(null)
   const [dragging, setDragging] = useState(false)
-  const [pending, setPending] = useState(null)   // { file, progress }
+  const [pending, setPending] = useState(null)
   const [error, setError] = useState('')
 
   function validate(file) {
-    if (!ALLOWED.includes(file.type)) {
-      setError('Only PDF, JPG, and PNG files are allowed')
-      return false
-    }
-    if (file.size > 20 * 1024 * 1024) {
-      setError('File must be under 20 MB')
-      return false
-    }
+    if (!ALLOWED.includes(file.type)) { setError(t('only_pdf_jpg_png')); return false }
+    if (file.size > 20 * 1024 * 1024) { setError(t('file_too_large')); return false }
     return true
   }
 
@@ -40,7 +36,7 @@ export default function UploadZone({ onUpload }) {
       await onUpload(pending.file, (p) => setPending((prev) => ({ ...prev, progress: p })))
       setPending(null)
     } catch (err) {
-      setError(err.response?.data?.error || 'Upload failed')
+      setError(err.response?.data?.error || t('upload_failed'))
       setPending(null)
     }
   }
@@ -53,13 +49,37 @@ export default function UploadZone({ onUpload }) {
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
-          className={`border-2 border-dashed rounded-xl px-6 py-10 text-center cursor-pointer transition-colors
-            ${dragging ? 'border-[#181818] bg-[#f5f5f5]' : 'border-[#e0e0e0] hover:border-[#181818]'}`}
+          className={`border-2 border-dashed rounded-2xl py-12 px-8 text-center cursor-pointer transition-all duration-200
+            ${dragging
+              ? 'border-teal-500 bg-teal-50 scale-[1.01]'
+              : 'border-teal-200 bg-teal-50/50 hover:border-teal-500 hover:bg-teal-50'
+            }`}
         >
-          <p className="text-sm font-medium text-[#181818]">
-            Drop your report here, or <span className="underline underline-offset-2">browse</span>
+          <div className="flex justify-center mb-4">
+            <div className="w-14 h-14 rounded-2xl bg-teal-100 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                <polyline points="16 16 12 12 8 16" />
+                <line x1="12" y1="12" x2="12" y2="21" />
+                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+              </svg>
+            </div>
+          </div>
+
+          <p className="text-[16px] font-bold text-ink-900 mb-1">{t('drop_report')}</p>
+          <p className="text-[15px] text-ink-400 font-medium mb-4">
+            {t('or')}{' '}
+            <span className="text-teal-700 font-semibold underline underline-offset-2">
+              {t('browse_files')}
+            </span>
           </p>
-          <p className="text-xs text-[#8e8e8e] mt-1">PDF, JPG, PNG — max 20 MB</p>
+
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-[12px] font-semibold bg-teal-100 text-teal-700 px-3 py-1 rounded-full">PDF</span>
+            <span className="text-[12px] font-semibold bg-amber-100 text-amber-500 px-3 py-1 rounded-full">JPG</span>
+            <span className="text-[12px] font-semibold bg-orange-100 text-coral-500 px-3 py-1 rounded-full">PNG</span>
+            <span className="text-[12px] font-medium text-ink-400">{t('max_20mb')}</span>
+          </div>
+
           <input
             ref={inputRef}
             type="file"
@@ -69,27 +89,26 @@ export default function UploadZone({ onUpload }) {
           />
         </div>
       ) : (
-        <div className="border border-[#e0e0e0] rounded-xl px-6 py-5 bg-white">
-          <div className="flex items-center justify-between mb-3">
+        <div className="border border-ink-200/60 rounded-2xl px-6 py-5 bg-card shadow-sm">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="text-xs font-medium bg-[#181818] text-white rounded px-2 py-0.5 shrink-0">
+              <span className="text-[12px] font-bold bg-teal-100 text-teal-700 rounded-lg px-2.5 py-1 shrink-0 uppercase tracking-wide">
                 {LABELS[pending.file.type]}
               </span>
-              <span className="text-sm text-[#181818] truncate">{pending.file.name}</span>
+              <span className="text-[15px] font-medium text-ink-900 truncate">{pending.file.name}</span>
             </div>
             <button
               onClick={() => { setPending(null); setError('') }}
-              className="text-[#8e8e8e] hover:text-[#181818] text-xs ml-3 shrink-0"
+              className="text-ink-400 hover:text-ink-900 text-[13px] font-medium ml-3 shrink-0 transition-colors"
             >
-              Remove
+              {t('remove')}
             </button>
           </div>
 
-          {/* Progress bar */}
           {pending.progress > 0 && (
-            <div className="h-1 bg-[#e0e0e0] rounded-full mb-3">
+            <div className="h-1.5 bg-ink-200 rounded-full mb-4 overflow-hidden">
               <div
-                className="h-1 bg-[#bbf451] rounded-full transition-all duration-150"
+                className="h-1.5 bg-gradient-to-r from-teal-600 to-teal-400 rounded-full transition-all duration-150"
                 style={{ width: `${pending.progress}%` }}
               />
             </div>
@@ -98,14 +117,16 @@ export default function UploadZone({ onUpload }) {
           <button
             onClick={handleUpload}
             disabled={pending.progress > 0}
-            className="w-full bg-[#181818] hover:bg-[#bbf451] hover:text-[#181818] disabled:opacity-40 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+            className="w-full bg-teal-700 hover:bg-teal-600 disabled:opacity-40 text-white text-[15px] font-semibold py-4 rounded-xl transition-all duration-150 shadow-md hover:shadow-lg"
           >
-            {pending.progress > 0 ? `Uploading ${pending.progress}%…` : 'Upload Report'}
+            {pending.progress > 0
+              ? t('uploading_progress', { progress: pending.progress })
+              : t('upload_btn')}
           </button>
         </div>
       )}
 
-      {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+      {error && <p className="text-[13px] font-medium text-red-500 mt-2">{error}</p>}
     </div>
   )
 }

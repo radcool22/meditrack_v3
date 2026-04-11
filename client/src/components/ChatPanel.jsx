@@ -1,7 +1,23 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useChat } from '../hooks/useChat'
 import { useCombinedChat } from '../hooks/useCombinedChat'
 import { useVoice } from '../hooks/useVoice'
+import { useLanguage } from '../context/LanguageContext'
+
+// ── Format message content with bullet point support ─────────────────
+function formatContent(text) {
+  const lines = text.split('\n').filter(l => l.trim() !== '')
+  if (lines.length <= 1) return <span>{text}</span>
+  return (
+    <ul className="space-y-1 list-none">
+      {lines.map((line, i) => {
+        const clean = line.replace(/^[\s•\-\*]+/, '').trim()
+        return <li key={i}>{clean}</li>
+      })}
+    </ul>
+  )
+}
 
 // ── Message bubble ───────────────────────────────────────────────────
 function MessageBubble({ msg }) {
@@ -9,47 +25,40 @@ function MessageBubble({ msg }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+        className={`max-w-[80%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
           isUser
-            ? 'bg-[#181818] text-white rounded-br-sm'
-            : 'bg-white border border-[#e0e0e0] text-[#181818] rounded-bl-sm'
+            ? 'bg-teal-700 text-white rounded-br-sm'
+            : 'bg-card border border-ink-200 shadow-sm text-ink-900 rounded-bl-sm'
         }`}
       >
         {msg.message_type === 'voice' && (
-          <span className="text-[10px] opacity-50 block mb-1">
+          <span className="text-[11px] opacity-60 block mb-1 font-medium">
             {isUser ? '🎤 Voice' : '🔊 Voice'}
           </span>
         )}
-        {msg.content}
+        {formatContent(msg.content)}
       </div>
     </div>
   )
 }
 
-// ── Voice state labels ───────────────────────────────────────────────
-const VOICE_LABELS = {
-  idle:      'Tap the mic to start',
-  ready:     'Tap the mic and speak',
-  listening: 'Listening… tap to stop',
-  thinking:  'Thinking…',
-  speaking:  'Speaking…',
-  error:     '',
-}
-
 const VOICE_MIC_STYLES = {
-  idle:      'bg-[#181818] text-white hover:bg-[#333]',
-  ready:     'bg-[#181818] text-white hover:bg-[#333]',
-  listening: 'bg-[#bbf451] text-[#181818]',
-  thinking:  'bg-[#e0e0e0] text-[#8e8e8e]',
-  speaking:  'bg-[#e0e0e0] text-[#8e8e8e]',
-  error:     'bg-[#181818] text-white hover:bg-[#333]',
+  idle:      'bg-teal-700 text-white hover:bg-teal-600',
+  ready:     'bg-teal-700 text-white hover:bg-teal-600',
+  listening: 'bg-green-500 text-white',
+  thinking:  'bg-ink-200 text-ink-400',
+  speaking:  'bg-ink-200 text-ink-400',
+  error:     'bg-teal-700 text-white hover:bg-teal-600',
 }
 
 // ── Main component ───────────────────────────────────────────────────
 export default function ChatPanel({ reportId }) {
+  const { t } = useTranslation()
+  const { language } = useLanguage()
+  const voiceLang = language === 'hi' ? 'hi-IN' : 'en-IN'
+
   const [mode, setMode] = useState('voice') // 'text' | 'voice'
   const [input, setInput] = useState('')
-  const [lang, setLang] = useState('en-IN') // speech recognition language
   const bottomRef = useRef(null)
 
   const singleChat = useChat(reportId ?? null)
@@ -58,7 +67,15 @@ export default function ChatPanel({ reportId }) {
   const { voiceState, errorMsg: voiceError, connect, disconnect, startListening, stopListening, speak } =
     useVoice()
 
-  // Scroll to bottom whenever messages change
+  const VOICE_LABELS = {
+    idle:      t('mic_idle'),
+    ready:     t('mic_ready'),
+    listening: t('mic_listening'),
+    thinking:  t('mic_thinking'),
+    speaking:  t('mic_speaking'),
+    error:     '',
+  }
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, sending])
@@ -75,7 +92,6 @@ export default function ChatPanel({ reportId }) {
     setInput('')
   }
 
-  // Tap mic: idle/error → connect → ready; ready → listen; listening → stop
   async function handleMicTap() {
     if (voiceState === 'idle' || voiceState === 'error') {
       connect()
@@ -84,73 +100,68 @@ export default function ChatPanel({ reportId }) {
     if (voiceState === 'ready') {
       startListening(async (transcript) => {
         const reply = await sendMessage(transcript)
-        if (reply) speak(reply, lang)
-      }, lang)
+        if (reply) speak(reply, voiceLang)
+      }, voiceLang)
       return
     }
     if (voiceState === 'listening') {
       stopListening()
       return
     }
-    // thinking / speaking — do nothing
   }
 
   const micDisabled = voiceState === 'thinking' || voiceState === 'speaking'
   const isListeningPulse = voiceState === 'listening'
 
   return (
-    <section className="bg-white border border-[#e0e0e0] rounded-xl overflow-hidden">
+    <section className="bg-card border border-ink-200/60 rounded-2xl shadow-sm overflow-hidden">
       {/* Header + mode toggle */}
-      <div className="px-5 pt-5 pb-4 border-b border-[#e0e0e0]">
-        <h2 className="text-xs font-medium uppercase tracking-widest text-[#8e8e8e] mb-3">
-          Ask about this report
+      <div className="bg-teal-900 px-5 py-4 rounded-t-2xl">
+        <h2 className="text-[13px] font-semibold uppercase tracking-widest text-teal-100/70 mb-3">
+          {t('ask_about_report')}
         </h2>
-        <div className="flex bg-[#f5f5f5] rounded-lg p-1">
-          <button
-            onClick={() => switchMode('text')}
-            className={`flex-1 text-sm font-medium py-2.5 rounded-md transition-colors ${
-              mode === 'text'
-                ? 'bg-white text-[#181818] shadow-sm'
-                : 'text-[#8e8e8e] hover:text-[#181818]'
-            }`}
-          >
-            Text
-          </button>
+        <div className="flex bg-white/10 rounded-xl p-1">
           <button
             onClick={() => switchMode('voice')}
-            className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-medium py-2.5 rounded-md transition-colors ${
-              mode === 'voice'
-                ? 'bg-white text-[#181818] shadow-sm'
-                : 'text-[#8e8e8e] hover:text-[#181818]'
+            className={`flex-1 flex items-center justify-center gap-1.5 text-[14px] font-semibold py-2.5 rounded-lg transition-all ${
+              mode === 'voice' ? 'bg-white text-teal-900 shadow-sm' : 'text-white/70 hover:text-white'
             }`}
           >
-            Voice
+            {t('voice')}
             {mode === 'voice' && voiceState === 'listening' && (
-              <span className="w-2 h-2 rounded-full bg-[#bbf451] animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             )}
+          </button>
+          <button
+            onClick={() => switchMode('text')}
+            className={`flex-1 text-[14px] font-semibold py-2.5 rounded-lg transition-all ${
+              mode === 'text' ? 'bg-white text-teal-900 shadow-sm' : 'text-white/70 hover:text-white'
+            }`}
+          >
+            {t('text')}
           </button>
         </div>
       </div>
 
       {/* Message thread */}
-      <div className="h-72 overflow-y-auto px-4 py-4 space-y-3 bg-[#f9f9f9]">
+      <div className="h-72 overflow-y-auto px-4 py-4 space-y-3 bg-surface">
         {loading ? (
-          <p className="text-xs text-[#8e8e8e] text-center pt-4">Loading conversation…</p>
+          <p className="text-[14px] font-medium text-ink-400 text-center pt-4">{t('loading_conversation')}</p>
         ) : messages.length === 0 ? (
-          <p className="text-xs text-[#8e8e8e] text-center pt-8 leading-relaxed">
-            Ask anything about your report —<br />
-            what a value means, why it matters, what to do next.
+          <p className="text-[14px] font-medium text-ink-400 text-center pt-8 leading-relaxed">
+            {t('chat_empty_line1')}<br />
+            {t('chat_empty_line2')}
           </p>
         ) : (
           messages.map((msg, i) => <MessageBubble key={msg.id ?? i} msg={msg} />)
         )}
         {sending && (
           <div className="flex justify-start">
-            <div className="bg-white border border-[#e0e0e0] rounded-2xl rounded-bl-sm px-4 py-3">
+            <div className="bg-card border border-ink-200 shadow-sm rounded-2xl rounded-bl-sm px-4 py-3">
               <div className="flex gap-1 items-center">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#8e8e8e] animate-bounce [animation-delay:0ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#8e8e8e] animate-bounce [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#8e8e8e] animate-bounce [animation-delay:300ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce [animation-delay:0ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce [animation-delay:300ms]" />
               </div>
             </div>
           </div>
@@ -159,8 +170,8 @@ export default function ChatPanel({ reportId }) {
       </div>
 
       {/* Input area */}
-      <div className="px-4 pb-4 pt-3 border-t border-[#e0e0e0]">
-        {chatError && <p className="text-xs text-red-500 mb-2">{chatError}</p>}
+      <div className="px-4 pb-4 pt-3 border-t border-ink-200/60 bg-card">
+        {chatError && <p className="text-[13px] font-medium text-red-500 mb-2">{chatError}</p>}
 
         {/* ── Text mode ── */}
         {mode === 'text' && (
@@ -169,16 +180,16 @@ export default function ChatPanel({ reportId }) {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your question…"
+              placeholder={t('type_question')}
               disabled={sending}
-              className="flex-1 border border-[#e0e0e0] focus:border-[#181818] rounded-lg px-3 py-3 text-sm text-[#181818] placeholder-[#8e8e8e] outline-none transition-colors bg-white disabled:opacity-50"
+              className="flex-1 border-2 border-ink-200 focus:border-teal-600 rounded-xl px-4 py-3 text-[15px] font-medium text-ink-900 placeholder-ink-400 outline-none transition-colors bg-white disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={sending || !input.trim()}
-              className="bg-[#181818] hover:bg-[#bbf451] hover:text-[#181818] disabled:opacity-40 text-white px-4 py-3 rounded-lg transition-colors text-sm font-medium shrink-0"
+              className="bg-teal-700 hover:bg-teal-600 disabled:opacity-40 text-white px-5 py-3 rounded-xl transition-colors text-[14px] font-semibold shrink-0 shadow-sm"
             >
-              Send
+              {t('send')}
             </button>
           </form>
         )}
@@ -186,61 +197,34 @@ export default function ChatPanel({ reportId }) {
         {/* ── Voice mode ── */}
         {mode === 'voice' && (
           <div className="flex flex-col items-center gap-3 py-2">
-            {/* Language selector */}
-            <div className="flex bg-[#f5f5f5] rounded-lg p-0.5 self-stretch">
-              <button
-                onClick={() => setLang('en-IN')}
-                className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-colors ${
-                  lang === 'en-IN' ? 'bg-white text-[#181818] shadow-sm' : 'text-[#8e8e8e]'
-                }`}
-              >
-                English
-              </button>
-              <button
-                onClick={() => setLang('hi-IN')}
-                className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-colors ${
-                  lang === 'hi-IN' ? 'bg-white text-[#181818] shadow-sm' : 'text-[#8e8e8e]'
-                }`}
-              >
-                हिंदी
-              </button>
-            </div>
-
-            {/* Status label */}
-            <p className="text-xs text-[#8e8e8e] text-center min-h-[1rem]">
+            <p className="text-[13px] font-medium text-ink-400 text-center min-h-[1rem]">
               {voiceError || VOICE_LABELS[voiceState]}
             </p>
 
-            {/* Large mic button */}
             <button
               onClick={handleMicTap}
               disabled={micDisabled}
               aria-label={VOICE_LABELS[voiceState]}
-              className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-200 disabled:cursor-not-allowed ${
+              className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-200 disabled:cursor-not-allowed shadow-lg ${
                 VOICE_MIC_STYLES[voiceState]
               } ${isListeningPulse ? 'animate-pulse' : ''}`}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="w-9 h-9"
-              >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-9 h-9">
                 <path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4Z" />
                 <path d="M19 10a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.93V19H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.07A7 7 0 0 0 19 10Z" />
               </svg>
             </button>
 
             {voiceState === 'listening' && (
-              <p className="text-xs font-medium text-[#181818] bg-[#bbf451] px-4 py-1.5 rounded-full">
-                Listening — tap to stop
+              <p className="text-[13px] font-semibold text-white bg-green-500 px-4 py-1.5 rounded-full">
+                {t('mic_listening_stop')}
               </p>
             )}
             {voiceState === 'thinking' && (
-              <p className="text-xs text-[#8e8e8e]">Getting answer…</p>
+              <p className="text-[13px] font-medium text-ink-400">{t('mic_getting_answer')}</p>
             )}
             {voiceState === 'speaking' && (
-              <p className="text-xs text-[#8e8e8e]">Speaking — please wait</p>
+              <p className="text-[13px] font-medium text-ink-400">{t('mic_speaking_wait')}</p>
             )}
           </div>
         )}
