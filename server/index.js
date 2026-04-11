@@ -4,6 +4,10 @@ import express from 'express'
 import cors from 'cors'
 import { WebSocketServer } from 'ws'
 import { parse as parseUrl } from 'url'
+import { fileURLToPath } from 'url'
+import path from 'path'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 import authRouter from './routes/auth.js'
 import reportsRouter from './routes/reports.js'
@@ -23,6 +27,15 @@ app.use('/api/analysis', analysisRouter)
 app.use('/api/chat', chatRouter)
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }))
+
+// Serve built React client in production
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.join(__dirname, '../client/dist')
+  app.use(express.static(clientDist))
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'))
+  })
+}
 
 // ── ElevenLabs test endpoint (debug only) ────────────────────────────
 app.post('/api/test-voice', async (req, res) => {
