@@ -28,7 +28,7 @@ function MessageBubble({ msg }) {
       <div
         className={`max-w-[80%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
           isUser
-            ? 'bg-teal-700 text-white rounded-br-sm'
+            ? 'bg-ink-900 text-white rounded-br-sm'
             : 'bg-card border border-ink-200 shadow-sm text-ink-900 rounded-bl-sm'
         }`}
       >
@@ -44,12 +44,12 @@ function MessageBubble({ msg }) {
 }
 
 const VOICE_MIC_STYLES = {
-  idle:      'bg-teal-700 text-white hover:bg-teal-600',
+  idle:      'bg-accent-500 text-white hover:bg-accent-600',
   ready:     'text-white',
   listening: 'text-white',
   thinking:  'bg-ink-200 text-ink-400',
   speaking:  'bg-ink-200 text-ink-400',
-  error:     'bg-teal-700 text-white hover:bg-teal-600',
+  error:     'bg-accent-500 text-white hover:bg-accent-600',
 }
 
 // ── Main component ───────────────────────────────────────────────────
@@ -61,7 +61,7 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
   const [mode, setMode] = useState('voice') // 'text' | 'voice'
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
-  const autoListenRef = useRef(false) // flag: start listening as soon as ready
+  const autoListenRef = useRef(false)
 
   const singleChat = useChat(isReportChat ? null : (reportId ?? null))
   const combinedChat = useCombinedChat()
@@ -70,10 +70,10 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
   const activeHook = isReportChat ? reportPageChat : (reportId ? singleChat : combinedChat)
   const { messages: rawMessages, loading, sending, error: chatError, sendMessage } = activeHook
 
-  // Inject greeting as first message when history is empty after loading
   const messages = !loading && rawMessages.length === 0 && greetingMessage
     ? [{ id: 'greeting', role: 'assistant', content: greetingMessage, message_type: 'text' }]
     : rawMessages
+
   const { voiceState, errorMsg: voiceError, connect, disconnect, startListening, stopListening, speak } =
     useVoice()
 
@@ -90,7 +90,6 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, sending])
 
-  // Auto-start listening once AudioContext is ready (after connect())
   useEffect(() => {
     if (voiceState === 'ready' && autoListenRef.current) {
       autoListenRef.current = false
@@ -115,7 +114,6 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
 
   function handleMicTap() {
     if (voiceState === 'idle' || voiceState === 'error') {
-      // First tap: unlock AudioContext then immediately start listening
       autoListenRef.current = true
       connect()
       return
@@ -139,16 +137,13 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
   return (
     <section className="bg-card border border-ink-200/60 rounded-2xl shadow-sm overflow-hidden">
       {/* Header + mode toggle */}
-      <div className="bg-teal-900 px-5 py-4 rounded-t-2xl">
-        <h2 className="text-[13px] font-semibold uppercase tracking-widest text-teal-100/70 mb-3">
-          {t('ask_about_report')}
-        </h2>
+      <div className="bg-black px-5 py-4 rounded-t-2xl">
         <div className="flex bg-white/10 rounded-2xl p-1.5 gap-1.5">
           <button
             onClick={() => switchMode('voice')}
             className={`flex-1 flex items-center justify-center gap-2 text-[17px] font-bold py-3.5 rounded-xl transition-all ${
               mode === 'voice'
-                ? 'bg-teal-600 text-white shadow-md'
+                ? 'bg-accent-500 text-white shadow-md'
                 : 'bg-white/15 text-white/60 hover:bg-white/25 hover:text-white'
             }`}
           >
@@ -161,7 +156,7 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
             onClick={() => switchMode('text')}
             className={`flex-1 text-[17px] font-bold py-3.5 rounded-xl transition-all ${
               mode === 'text'
-                ? 'bg-teal-600 text-white shadow-md'
+                ? 'bg-accent-500 text-white shadow-md'
                 : 'bg-white/15 text-white/60 hover:bg-white/25 hover:text-white'
             }`}
           >
@@ -186,9 +181,9 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
           <div className="flex justify-start">
             <div className="bg-card border border-ink-200 shadow-sm rounded-2xl rounded-bl-sm px-4 py-3">
               <div className="flex gap-1 items-center">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce [animation-delay:0ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce [animation-delay:300ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-500 animate-bounce [animation-delay:0ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-500 animate-bounce [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-500 animate-bounce [animation-delay:300ms]" />
               </div>
             </div>
           </div>
@@ -209,12 +204,12 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
               onChange={(e) => setInput(e.target.value)}
               placeholder={t('type_question')}
               disabled={sending}
-              className="flex-1 border-2 border-ink-200 focus:border-teal-600 rounded-xl px-4 py-3 text-[15px] font-medium text-ink-900 placeholder-ink-400 outline-none transition-colors bg-white disabled:opacity-50"
+              className="flex-1 border-2 border-ink-200 focus:border-accent-500 rounded-xl px-4 py-3 text-[15px] font-medium text-ink-900 placeholder-ink-400 outline-none transition-colors bg-white disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={sending || !input.trim()}
-              className="bg-teal-700 hover:bg-teal-600 disabled:opacity-40 text-white px-5 py-3 rounded-xl transition-colors text-[14px] font-semibold shrink-0 shadow-sm"
+              className="bg-accent-500 hover:bg-accent-600 disabled:opacity-40 text-white px-5 py-3 rounded-xl transition-colors text-[14px] font-semibold shrink-0 shadow-sm"
             >
               {t('send')}
             </button>
@@ -232,7 +227,7 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
               onClick={handleMicTap}
               disabled={micDisabled}
               aria-label={VOICE_LABELS[voiceState]}
-              style={micActive ? { backgroundColor: '#FF6B4A' } : undefined}
+              style={micActive ? { backgroundColor: 'rgb(52, 120, 247)' } : undefined}
               className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-200 disabled:cursor-not-allowed shadow-lg ${
                 VOICE_MIC_STYLES[voiceState]
               } ${micActive ? 'animate-pulse' : ''}`}

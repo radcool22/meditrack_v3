@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import logo from '../assets/logo.svg'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -153,14 +154,8 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-surface font-sans">
       {/* Top navbar */}
       <header className="bg-card border-b border-ink-200/60 px-5 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-teal-700 flex items-center justify-center shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="white" className="w-4 h-4">
-              <rect x="6" y="1" width="4" height="14" rx="1.5" />
-              <rect x="1" y="6" width="14" height="4" rx="1.5" />
-            </svg>
-          </div>
-          <h1 className="text-xl font-extrabold text-teal-900 tracking-tight">{t('app_name')}</h1>
+        <div className="flex items-center">
+          <img src={logo} alt="Meditrack" className="h-7" />
         </div>
         <div className="flex items-center gap-3">
           <LangToggle />
@@ -198,7 +193,7 @@ export default function DashboardPage() {
           {!loading && !hasDoneReports ? (
             <div className="bg-card rounded-2xl border border-ink-200/60 shadow-sm px-6 py-8 text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-teal-50 mb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#0f766e" className="w-6 h-6">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgb(199, 243, 108)" className="w-6 h-6">
                   <path fillRule="evenodd" d="M4.848 2.771A49.144 49.144 0 0 1 12 2.25c2.43 0 4.817.178 7.152.52 1.978.292 3.348 2.024 3.348 3.97v6.02c0 1.946-1.37 3.678-3.348 3.97a48.901 48.901 0 0 1-3.476.383.39.39 0 0 0-.297.17l-2.755 4.133a.75.75 0 0 1-1.248 0l-2.755-4.133a.39.39 0 0 0-.297-.17 48.9 48.9 0 0 1-3.476-.384c-1.978-.29-3.348-2.024-3.348-3.97V6.741c0-1.946 1.37-3.68 3.348-3.97Z" clipRule="evenodd" />
                 </svg>
               </div>

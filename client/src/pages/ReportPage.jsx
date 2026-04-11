@@ -80,7 +80,7 @@ export default function ReportPage() {
             <p className="text-[13px] text-red-600 font-mono break-all">{error}</p>
             <button
               onClick={retry}
-              className="text-[14px] font-semibold bg-teal-700 hover:bg-teal-600 text-white px-5 py-2.5 rounded-xl transition-colors shadow-sm"
+              className="text-[14px] font-semibold bg-accent-500 hover:bg-accent-600 text-white px-5 py-2.5 rounded-xl transition-colors shadow-sm"
             >
               {t('retry_analysis')}
             </button>
@@ -101,28 +101,26 @@ export default function ReportPage() {
                 <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-4">
                   {t('values_attention')}
                 </h2>
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
                   {analysis.abnormal_values.map((item, i) => (
                     <div
                       key={i}
-                      className={`border rounded-2xl px-5 py-4 ${FLAG_STYLES[item.flag] ?? 'bg-surface border-ink-200'}`}
+                      className={`border rounded-2xl p-4 flex flex-col shadow-sm ${FLAG_STYLES[item.flag] ?? 'bg-surface border-ink-200'}`}
                     >
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <span className="text-[15px] font-bold text-ink-900">{item.test}</span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className={`text-[18px] font-extrabold ${FLAG_VALUE_COLOR[item.flag] ?? 'text-ink-900'}`}>
-                            {item.value}
-                          </span>
-                          <span className={`text-[15px] font-bold ${FLAG_VALUE_COLOR[item.flag] ?? 'text-ink-600'}`}>
-                            {item.flag === 'HIGH' ? '↑' : item.flag === 'LOW' ? '↓' : '!'}
-                          </span>
-                        </div>
+                      <div className="flex items-start justify-between gap-1 mb-2">
+                        <span className="text-[12px] font-bold text-ink-900 leading-tight flex-1">{item.test}</span>
+                        <span className={`text-[13px] font-bold shrink-0 ${FLAG_VALUE_COLOR[item.flag] ?? 'text-ink-600'}`}>
+                          {item.flag === 'HIGH' ? '↑' : item.flag === 'LOW' ? '↓' : '!'}
+                        </span>
                       </div>
-                      <p className="text-[14px] text-ink-600 leading-relaxed mb-1">
+                      <p className={`text-[20px] font-extrabold leading-none mb-2 ${FLAG_VALUE_COLOR[item.flag] ?? 'text-ink-900'}`}>
+                        {item.value}
+                      </p>
+                      <p className="text-[12px] text-ink-600 leading-relaxed flex-1">
                         {item.plain_explanation}
                       </p>
                       {item.normal_range && (
-                        <p className="text-[13px] text-ink-400 font-medium">
+                        <p className="text-[11px] text-ink-400 font-medium mt-2">
                           {t('normal_range')} {item.normal_range}
                         </p>
                       )}
@@ -135,7 +133,7 @@ export default function ReportPage() {
             {analysis.abnormal_values?.length === 0 && (
               <section className="bg-teal-50 border border-teal-200 rounded-2xl px-5 py-5 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="#0f766e" className="w-5 h-5">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="rgb(199, 243, 108)" className="w-5 h-5">
                     <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
                   </svg>
                 </div>
@@ -151,7 +149,7 @@ export default function ReportPage() {
                 <ul className="space-y-3">
                   {analysis.suggestions.map((s, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <span className="shrink-0 w-6 h-6 rounded-full bg-teal-700 text-white text-[12px] font-bold flex items-center justify-center mt-0.5">
+                      <span className="shrink-0 w-6 h-6 rounded-full bg-black text-white text-[12px] font-bold flex items-center justify-center mt-0.5">
                         {i + 1}
                       </span>
                       <span className="text-[15px] text-ink-900 leading-relaxed">{s}</span>

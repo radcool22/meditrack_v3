@@ -4,35 +4,41 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Legacy brand colors (kept for backward compat)
-        brand: {
-          lime:       '#bbf451',
-          'lime-dark':'#a6db46',
-          black:      '#181818',
-          gray:       '#8e8e8e',
-          border:     '#e0e0e0',
-          surface:    '#f5f5f5',
-        },
-        // New MediTrack design system
+        // MediTrack design system
         teal: {
-          50:  '#f0fdfa',
-          100: '#ccfbf1',
-          200: '#99f6e4',
-          500: '#14b8a6',
-          600: '#0d9488',
-          700: '#0f766e',
-          900: '#134e4a',
-          950: '#0d2d2a',
+          50:  'rgb(244, 255, 218)',   // very light lime — icon backgrounds
+          100: 'rgb(232, 253, 190)',   // light lime — badge backgrounds
+          200: 'rgb(212, 248, 148)',   // medium-light lime — borders
+          400: 'rgb(199, 243, 108)',   // primary lime — gradient ends
+          500: 'rgb(199, 243, 108)',   // primary lime — border accents, dots
+          600: 'rgb(160, 210, 70)',    // darker lime — hover states
+          700: 'rgb(199, 243, 108)',   // primary lime — main buttons, brand
+          900: 'rgb(72, 115, 10)',     // dark lime — header backgrounds
+          950: 'rgb(40, 70, 5)',       // very dark lime
         },
+        // Orange / coral / amber all map to blue accent
         amber: {
-          100: '#fef3c7',
-          400: '#fbbf24',
-          500: '#f59e0b',
+          50:  'rgb(235, 243, 255)',   // light blue bg
+          100: 'rgb(219, 234, 254)',   // light blue — badge backgrounds
+          200: 'rgb(191, 219, 254)',   // medium blue — borders
+          400: 'rgb(52, 120, 247)',    // primary blue
+          500: 'rgb(40, 96, 207)',     // hover blue
+        },
+        orange: {
+          50:  'rgb(235, 243, 255)',   // light blue bg
+          100: 'rgb(219, 234, 254)',   // light blue
+          200: 'rgb(191, 219, 254)',   // medium blue
+          500: 'rgb(52, 120, 247)',    // primary blue
         },
         coral: {
-          500: '#f97316',
+          500: 'rgb(52, 120, 247)',    // primary blue
         },
-        surface: '#fafaf9',
+        // Explicit accent tokens for the exact required RGB values
+        accent: {
+          500: 'rgb(52, 120, 247)',    // primary blue accent
+          600: 'rgb(40, 96, 207)',     // hover blue accent
+        },
+        surface: '#ffffff',
         card:    '#ffffff',
         ink: {
           900: '#1a1a1a',
@@ -42,7 +48,7 @@ export default {
         },
       },
       fontFamily: {
-        sans:  ['Plus Jakarta Sans', 'sans-serif'],
+        sans:  ['Aileron', 'Helvetica Neue', 'Arial', 'sans-serif'],
         serif: ['Playfair Display', 'serif'],
       },
     },

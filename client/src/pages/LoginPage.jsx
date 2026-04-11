@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import logo from '../assets/logo.svg'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
@@ -102,14 +103,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm bg-card border border-ink-200/60 rounded-3xl p-8 shadow-2xl">
 
         <div className="mb-7 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-teal-50 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="w-8 h-8">
-              <rect x="9" y="2" width="6" height="20" rx="2" fill="#0f766e" />
-              <rect x="2" y="9" width="20" height="6" rx="2" fill="#0f766e" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-extrabold text-ink-900 tracking-tight">{t('app_name')}</h1>
-          <p className="text-ink-400 text-[15px] mt-1.5 font-medium">{t('login_tagline')}</p>
+          <img src={logo} alt="Meditrack" className="h-10 mx-auto mb-3" />
+          <p className="text-ink-400 text-[15px] font-medium">{t('login_tagline')}</p>
         </div>
 
         {step === 'phone' && (
@@ -141,7 +136,7 @@ export default function LoginPage() {
               <label className="block text-[13px] font-semibold text-ink-600 uppercase tracking-widest mb-2">
                 {t('phone_label')}
               </label>
-              <div className="flex items-stretch border-2 border-ink-200 rounded-xl overflow-hidden focus-within:border-teal-600 transition-colors">
+              <div className="flex items-stretch border-2 border-ink-200 rounded-xl overflow-hidden focus-within:border-accent-500 transition-colors">
                 <span className="px-4 flex items-center bg-teal-50 text-teal-700 text-[15px] font-semibold border-r-2 border-ink-200 select-none shrink-0">
                   +91
                 </span>
@@ -160,7 +155,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-teal-700 hover:bg-teal-600 disabled:opacity-40 text-white text-[16px] font-semibold py-4 rounded-xl transition-all duration-150 shadow-md hover:shadow-lg mt-1"
+              className="w-full bg-accent-500 hover:bg-accent-600 disabled:opacity-40 text-white text-[16px] font-semibold py-4 rounded-xl transition-all duration-150 shadow-md hover:shadow-lg mt-1"
             >
               {loading ? t('sending') : t('send_otp')}
             </button>
@@ -188,7 +183,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-teal-700 hover:bg-teal-600 disabled:opacity-40 text-white text-[16px] font-semibold py-4 rounded-xl transition-all duration-150 shadow-md hover:shadow-lg mt-1"
+              className="w-full bg-accent-500 hover:bg-accent-600 disabled:opacity-40 text-white text-[16px] font-semibold py-4 rounded-xl transition-all duration-150 shadow-md hover:shadow-lg mt-1"
             >
               {loading ? t('verifying') : t('verify_otp')}
             </button>
@@ -219,7 +214,7 @@ export default function LoginPage() {
           <div className="w-full max-w-sm bg-card rounded-3xl p-8 shadow-2xl border border-ink-200/60">
             <div className="mb-6 text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-teal-50 mb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#0f766e" className="w-6 h-6">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgb(199, 243, 108)" className="w-6 h-6">
                   <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm4.28 10.28a.75.75 0 0 0 0-1.06l-3-3a.75.75 0 1 0-1.06 1.06l1.72 1.72H8.25a.75.75 0 0 0 0 1.5h5.69l-1.72 1.72a.75.75 0 1 0 1.06 1.06l3-3Z" clipRule="evenodd" />
                 </svg>
               </div>
@@ -245,7 +240,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={nameLoading || !nameInput.trim()}
-                className="w-full bg-teal-700 hover:bg-teal-600 disabled:opacity-40 text-white text-[16px] font-semibold py-4 rounded-xl transition-all duration-150 shadow-md hover:shadow-lg"
+                className="w-full bg-accent-500 hover:bg-accent-600 disabled:opacity-40 text-white text-[16px] font-semibold py-4 rounded-xl transition-all duration-150 shadow-md hover:shadow-lg"
               >
                 {nameLoading ? t('saving') : t('continue_btn')}
               </button>

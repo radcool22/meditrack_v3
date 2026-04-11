@@ -1,41 +1,52 @@
 import { useLanguage } from '../context/LanguageContext'
 
 /**
- * Compact Aa / अआ language toggle.
- * dark={true}  → styled for dark/teal navbars (login page)
- * dark={false} → styled for light navbars (dashboard, report page)
+ * Neumorphic flag slider toggle — EN (🇬🇧) ↔ HI (🇮🇳)
+ * Matches the pill-with-sliding-circle design from the reference image.
  */
 export default function LangToggle({ dark = false }) {
   const { language, switchLanguage } = useLanguage()
+  const isHindi = language === 'hi'
 
-  const track = dark ? 'bg-white/10' : 'bg-ink-200/30'
-
-  const activeClass = 'text-white shadow-md'
-  const activeStyle = { backgroundColor: '#FF6B4A' }
-  const inactiveClass = dark
-    ? 'text-white/50 hover:text-white/80'
-    : 'text-ink-300 hover:text-ink-500'
+  const labelActive   = dark ? 'text-white font-extrabold' : 'text-ink-900 font-extrabold'
+  const labelInactive = dark ? 'text-white/35 font-bold'   : 'text-ink-300 font-bold'
 
   return (
-    <div className={`flex rounded-xl p-1 gap-1 ${track}`}>
+    <div className="flex items-center gap-2.5 select-none">
+      {/* EN label */}
+      <span className={`text-[13px] tracking-widest uppercase transition-colors ${isHindi ? labelInactive : labelActive}`}>
+        EN
+      </span>
+
+      {/* Pill track */}
       <button
-        onClick={() => switchLanguage('en')}
-        style={language === 'en' ? activeStyle : undefined}
-        className={`px-3 py-2 text-[13px] font-bold rounded-lg transition-all ${
-          language === 'en' ? activeClass : inactiveClass
-        }`}
+        onClick={() => switchLanguage(isHindi ? 'en' : 'hi')}
+        aria-label={isHindi ? 'Switch to English' : 'Switch to Hindi'}
+        className="relative w-[58px] h-[30px] rounded-full focus:outline-none transition-all"
+        style={{
+          background: dark ? 'rgba(255,255,255,0.12)' : '#e4e4e4',
+          boxShadow: dark
+            ? 'inset 1px 1px 4px rgba(0,0,0,0.3), inset -1px -1px 3px rgba(255,255,255,0.1)'
+            : 'inset 2px 2px 5px rgba(0,0,0,0.13), inset -2px -2px 4px rgba(255,255,255,0.85)',
+        }}
       >
-        Voice: EN
+        {/* Sliding circle with flag */}
+        <div
+          className="absolute top-[3px] w-6 h-6 rounded-full flex items-center justify-center text-[14px] transition-all duration-300 ease-in-out"
+          style={{
+            left: isHindi ? '30px' : '3px',
+            background: 'white',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.22), 0 1px 2px rgba(0,0,0,0.12)',
+          }}
+        >
+          {isHindi ? '🇮🇳' : '🇬🇧'}
+        </div>
       </button>
-      <button
-        onClick={() => switchLanguage('hi')}
-        style={language === 'hi' ? activeStyle : undefined}
-        className={`px-3 py-2 text-[13px] font-bold rounded-lg transition-all ${
-          language === 'hi' ? activeClass : inactiveClass
-        }`}
-      >
-        Voice: HI
-      </button>
+
+      {/* HI label */}
+      <span className={`text-[13px] tracking-widest uppercase transition-colors ${isHindi ? labelActive : labelInactive}`}>
+        HI
+      </span>
     </div>
   )
 }

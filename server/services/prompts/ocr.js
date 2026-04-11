@@ -49,7 +49,7 @@ Flag rules:
       "value": "value with unit",
       "normal_range": "normal range",
       "flag": "HIGH or LOW or ABNORMAL",
-      "plain_explanation": "1–2 sentences explaining what this test measures and why the result matters, in simple language a layperson understands"
+      "plain_explanation": "15–20 words max. One short sentence: what this test is and why this result matters. Plain language."
     }
   ],
   "suggestions": [

@@ -57,7 +57,7 @@ export default function UploadZone({ onUpload }) {
         >
           <div className="flex justify-center mb-4">
             <div className="w-14 h-14 rounded-2xl bg-teal-100 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="rgb(199, 243, 108)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
                 <polyline points="16 16 12 12 8 16" />
                 <line x1="12" y1="12" x2="12" y2="21" />
                 <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
@@ -68,13 +68,13 @@ export default function UploadZone({ onUpload }) {
           <p className="text-[16px] font-bold text-ink-900 mb-1">{t('drop_report')}</p>
           <p className="text-[15px] text-ink-400 font-medium mb-4">
             {t('or')}{' '}
-            <span className="text-teal-700 font-semibold underline underline-offset-2">
+            <span className="text-accent-500 font-semibold underline underline-offset-2">
               {t('browse_files')}
             </span>
           </p>
 
           <div className="flex items-center justify-center gap-2">
-            <span className="text-[12px] font-semibold bg-teal-100 text-teal-700 px-3 py-1 rounded-full">PDF</span>
+            <span className="text-[12px] font-semibold bg-amber-100 text-accent-500 px-3 py-1 rounded-full">PDF</span>
             <span className="text-[12px] font-semibold bg-amber-100 text-amber-500 px-3 py-1 rounded-full">JPG</span>
             <span className="text-[12px] font-semibold bg-orange-100 text-coral-500 px-3 py-1 rounded-full">PNG</span>
             <span className="text-[12px] font-medium text-ink-400">{t('max_20mb')}</span>
@@ -92,7 +92,7 @@ export default function UploadZone({ onUpload }) {
         <div className="border border-ink-200/60 rounded-2xl px-6 py-5 bg-card shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="text-[12px] font-bold bg-teal-100 text-teal-700 rounded-lg px-2.5 py-1 shrink-0 uppercase tracking-wide">
+              <span className="text-[12px] font-bold bg-amber-100 text-accent-500 rounded-lg px-2.5 py-1 shrink-0 uppercase tracking-wide">
                 {LABELS[pending.file.type]}
               </span>
               <span className="text-[15px] font-medium text-ink-900 truncate">{pending.file.name}</span>
@@ -108,7 +108,7 @@ export default function UploadZone({ onUpload }) {
           {pending.progress > 0 && (
             <div className="h-1.5 bg-ink-200 rounded-full mb-4 overflow-hidden">
               <div
-                className="h-1.5 bg-gradient-to-r from-teal-600 to-teal-400 rounded-full transition-all duration-150"
+                className="h-1.5 bg-gradient-to-r from-accent-600 to-accent-500 rounded-full transition-all duration-150"
                 style={{ width: `${pending.progress}%` }}
               />
             </div>
@@ -117,7 +117,7 @@ export default function UploadZone({ onUpload }) {
           <button
             onClick={handleUpload}
             disabled={pending.progress > 0}
-            className="w-full bg-teal-700 hover:bg-teal-600 disabled:opacity-40 text-white text-[15px] font-semibold py-4 rounded-xl transition-all duration-150 shadow-md hover:shadow-lg"
+            className="w-full bg-accent-500 hover:bg-accent-600 disabled:opacity-40 text-white text-[15px] font-semibold py-4 rounded-xl transition-all duration-150 shadow-md hover:shadow-lg"
           >
             {pending.progress > 0
               ? t('uploading_progress', { progress: pending.progress })

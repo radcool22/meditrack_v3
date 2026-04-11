@@ -10,7 +10,7 @@ function formatReportDate(report) {
 }
 
 const FILE_TYPE_BADGE = {
-  pdf:  'bg-teal-100 text-teal-700',
+  pdf:  'bg-teal-100 text-ink-900',
   jpg:  'bg-amber-100 text-amber-500',
   jpeg: 'bg-amber-100 text-amber-500',
   png:  'bg-orange-100 text-coral-500',
@@ -62,10 +62,10 @@ export default function ReportCard({ report, onDelete }) {
 
       <div className="flex items-center gap-2 shrink-0">
         {isProcessing && (
-          <div className="w-4 h-4 border-2 border-ink-200 border-t-teal-600 rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-ink-200 border-t-accent-500 rounded-full animate-spin" />
         )}
         {isDone && (
-          <span className="text-[13px] font-semibold bg-teal-100 text-teal-700 px-3 py-1 rounded-full">
+          <span className="text-[13px] font-semibold bg-teal-100 text-ink-900 px-3 py-1 rounded-full">
             {t('status_ready')}
           </span>
         )}
@@ -78,7 +78,7 @@ export default function ReportCard({ report, onDelete }) {
         {isDone && !confirming && (
           <button
             onClick={(e) => { e.stopPropagation(); navigate(`/report/${report.id}?autoSpeak=1`) }}
-            className="text-[13px] font-semibold bg-teal-700 text-white hover:bg-teal-600 px-4 py-2 rounded-xl transition-colors shadow-sm"
+            className="text-[13px] font-semibold bg-accent-500 text-white hover:bg-accent-600 px-4 py-2 rounded-xl transition-colors shadow-sm"
           >
             {t('summary')}
           </button>
