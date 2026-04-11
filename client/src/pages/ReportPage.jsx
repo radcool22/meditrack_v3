@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useVoice } from '../hooks/useVoice'
+import { useLanguage } from '../context/LanguageContext'
 import LangToggle from '../components/LangToggle'
 import ChatPanel from '../components/ChatPanel'
 
@@ -34,7 +35,8 @@ export default function ReportPage() {
   const { t } = useTranslation()
   const autoSpeak = searchParams.get('autoSpeak') === '1'
 
-  const { analysis, status, loading, error, retry } = useAnalysis(id)
+  const { language } = useLanguage()
+  const { analysis, status, loading, error, retry } = useAnalysis(id, language)
   const { connect, speak } = useVoice()
 
   const hasSpoken = useRef(false)

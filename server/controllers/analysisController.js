@@ -30,13 +30,16 @@ export async function runAnalysis(req, res) {
     return res.status(409).json({ error: 'Analysis already in progress' })
   }
 
-  // 2. Fetch user language preference first (needed for cache check too)
+  // 2. Resolve language — client sends current lang in body to avoid DB race condition
+  //    Fall back to DB preference if not provided
   const { data: user } = await supabase
     .from('users')
     .select('language_preference')
     .eq('id', userId)
     .single()
-  const language = user?.language_preference ?? 'en'
+  const language = (req.body.lang === 'en' || req.body.lang === 'hi')
+    ? req.body.lang
+    : (user?.language_preference ?? 'en')
 
   if (report.status === 'done') {
     // Return cached analysis only if it matches the user's current language
@@ -138,13 +141,16 @@ export async function getAnalysis(req, res) {
 
   if (!report) return res.status(404).json({ error: 'Report not found' })
 
-  // Fetch user language so we serve the right language version
-  const { data: user } = await supabase
-    .from('users')
-    .select('language_preference')
-    .eq('id', userId)
-    .single()
-  const language = user?.language_preference ?? 'en'
+  // Resolve language — client sends ?lang= to avoid DB race condition on toggle
+  const queryLang = req.query.lang
+  const language = (queryLang === 'en' || queryLang === 'hi')
+    ? queryLang
+    : await supabase
+        .from('users')
+        .select('language_preference')
+        .eq('id', userId)
+        .single()
+        .then(({ data }) => data?.language_preference ?? 'en')
 
   // Look for analysis in the user's current language
   const { data: analysis } = await supabase
