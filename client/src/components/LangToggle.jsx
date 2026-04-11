@@ -21,20 +21,20 @@ export default function LangToggle({ dark = false }) {
       <button
         onClick={() => switchLanguage('en')}
         style={language === 'en' ? activeStyle : undefined}
-        className={`px-4 py-2 text-[15px] font-extrabold rounded-lg transition-all ${
+        className={`px-3 py-2 text-[13px] font-bold rounded-lg transition-all ${
           language === 'en' ? activeClass : inactiveClass
         }`}
       >
-        Aa
+        Voice: EN
       </button>
       <button
         onClick={() => switchLanguage('hi')}
         style={language === 'hi' ? activeStyle : undefined}
-        className={`px-4 py-2 text-[15px] font-extrabold rounded-lg transition-all ${
+        className={`px-3 py-2 text-[13px] font-bold rounded-lg transition-all ${
           language === 'hi' ? activeClass : inactiveClass
         }`}
       >
-        अआ
+        Voice: HI
       </button>
     </div>
   )

@@ -3,8 +3,7 @@
  * Handles Indian lab report formats: SRL, Dr. Lal PathLabs, Thyrocare,
  * Metropolis, Apollo Diagnostics, AIIMS, etc.
  *
- * Single call — returns structured_data + analysis together to stay
- * within the 5-second constraint.
+ * Single call — returns structured_data + analysis together.
  */
 
 export function buildStructureAndAnalysePrompt(rawText, language) {

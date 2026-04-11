@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
 
-export function useAnalysis(reportId, language = 'en') {
+export function useAnalysis(reportId) {
   const { token } = useAuth()
   const [analysis, setAnalysis] = useState(null)
   const [status, setStatus] = useState(null) // pending | processing | done | failed
@@ -23,9 +23,7 @@ export function useAnalysis(reportId, language = 'en') {
     setError('')
     setStatus('processing')
     try {
-      // Pass lang in body so runAnalysis uses the correct language immediately,
-      // bypassing the DB read race condition on language toggle
-      const { data } = await axios.post(`/api/analysis/${reportId}`, { lang: language }, { headers })
+      const { data } = await axios.post(`/api/analysis/${reportId}`, {}, { headers })
       setAnalysis(data.analysis)
       setStatus('done')
     } catch (err) {
@@ -41,8 +39,7 @@ export function useAnalysis(reportId, language = 'en') {
 
   async function fetchStatus() {
     try {
-      // Pass lang as query param so getAnalysis doesn't rely on the DB read
-      const { data } = await axios.get(`/api/analysis/${reportId}?lang=${language}`, { headers })
+      const { data } = await axios.get(`/api/analysis/${reportId}`, { headers })
       setStatus(data.status)
       if (data.analysis) {
         setAnalysis(data.analysis)
@@ -61,7 +58,6 @@ export function useAnalysis(reportId, language = 'en') {
   useEffect(() => {
     if (!reportId || !token) return
 
-    // Reset analysis state whenever language changes so stale content isn't shown
     setAnalysis(null)
     setStatus(null)
     setError('')
@@ -72,7 +68,7 @@ export function useAnalysis(reportId, language = 'en') {
     setLoading(false)
 
     return () => stopPolling()
-  }, [reportId, token, language])
+  }, [reportId, token])
 
   // Start polling when status becomes processing
   useEffect(() => {

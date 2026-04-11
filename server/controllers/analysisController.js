@@ -10,6 +10,16 @@ async function fetchBuffer(url) {
   return Buffer.from(arrayBuffer)
 }
 
+async function runGptAnalysis(prompt) {
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.2,
+    response_format: { type: 'json_object' },
+  })
+  return JSON.parse(completion.choices[0].message.content)
+}
+
 export async function runAnalysis(req, res) {
   const { reportId } = req.params
   const { userId } = req.user
@@ -30,83 +40,62 @@ export async function runAnalysis(req, res) {
     return res.status(409).json({ error: 'Analysis already in progress' })
   }
 
-  // 2. Resolve language — client sends current lang in body to avoid DB race condition
-  //    Fall back to DB preference if not provided
-  const { data: user } = await supabase
-    .from('users')
-    .select('language_preference')
-    .eq('id', userId)
-    .single()
-  const language = (req.body.lang === 'en' || req.body.lang === 'hi')
-    ? req.body.lang
-    : (user?.language_preference ?? 'en')
-
   if (report.status === 'done') {
-    // Return cached analysis only if it matches the user's current language
+    // Return cached analysis if it exists
     const { data: existing } = await supabase
       .from('report_analyses')
       .select('*')
       .eq('report_id', reportId)
-      .eq('language', language)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
     if (existing) return res.json({ analysis: existing })
-    // Language mismatch — fall through to re-run analysis in the correct language
+    // No analysis row yet — fall through to generate
   }
 
-  // 3. Mark as processing
+  // 2. Mark as processing
   await supabase
     .from('reports')
     .update({ status: 'processing' })
     .eq('id', reportId)
 
   try {
-    // 4. Download file and run OCR
+    // 3. Download file and run OCR
     const buffer = await fetchBuffer(report.file_url)
     const rawText = await extractText(buffer, report.file_type)
 
-    // 5. Save raw OCR text
+    // 4. Save raw OCR text
     await supabase
       .from('reports')
       .update({ ocr_raw_text: rawText })
       .eq('id', reportId)
 
-    // 6. Single GPT-4o call — structure + analyse
-    const prompt = buildStructureAndAnalysePrompt(rawText, language)
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.2,
-      response_format: { type: 'json_object' },
-    })
+    // 5. GPT call — English: structure + analyse
+    const parsed = await runGptAnalysis(buildStructureAndAnalysePrompt(rawText, 'en'))
+    const { structured_data: structuredRaw, analysis: enAnalysis } = parsed
 
-    const parsed = JSON.parse(completion.choices[0].message.content)
-    const { structured_data: structuredRaw, analysis } = parsed
-
-    // Extract report_date and tests array from structured_data
-    const reportDate   = structuredRaw?.report_date ?? null   // "YYYY-MM-DD" or null
-    const testsArray   = Array.isArray(structuredRaw?.tests) ? structuredRaw.tests
-                       : Array.isArray(structuredRaw) ? structuredRaw  // backwards compat
-                       : []
-    // Store tests array as structured_data for downstream consumers
+    // Extract report_date and tests array
+    const reportDate = structuredRaw?.report_date ?? null
+    const testsArray = Array.isArray(structuredRaw?.tests) ? structuredRaw.tests
+                     : Array.isArray(structuredRaw) ? structuredRaw  // backwards compat
+                     : []
     const structured_data = testsArray
 
-    // 7. Save structured data + report_date + mark done
+    // 6. Save structured data + report_date + mark done
     await supabase
       .from('reports')
       .update({ structured_data, report_date: reportDate, status: 'done' })
       .eq('id', reportId)
 
-    // 8. Insert analysis row
+    // 7. Insert analysis row (English only)
     const { data: analysisRow, error: analysisErr } = await supabase
       .from('report_analyses')
       .insert({
-        report_id: reportId,
-        summary: analysis.summary,
-        abnormal_values: analysis.abnormal_values,
-        suggestions: analysis.suggestions,
-        language,
+        report_id:       reportId,
+        summary:         enAnalysis.summary,
+        abnormal_values: enAnalysis.abnormal_values,
+        suggestions:     enAnalysis.suggestions,
+        language:        'en',
       })
       .select()
       .single()
@@ -141,23 +130,10 @@ export async function getAnalysis(req, res) {
 
   if (!report) return res.status(404).json({ error: 'Report not found' })
 
-  // Resolve language — client sends ?lang= to avoid DB race condition on toggle
-  const queryLang = req.query.lang
-  const language = (queryLang === 'en' || queryLang === 'hi')
-    ? queryLang
-    : await supabase
-        .from('users')
-        .select('language_preference')
-        .eq('id', userId)
-        .single()
-        .then(({ data }) => data?.language_preference ?? 'en')
-
-  // Look for analysis in the user's current language
   const { data: analysis } = await supabase
     .from('report_analyses')
     .select('*')
     .eq('report_id', reportId)
-    .eq('language', language)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -166,7 +142,5 @@ export async function getAnalysis(req, res) {
     return res.json({ status: report.status, analysis })
   }
 
-  // No language-matched analysis — signal pending so client re-triggers
-  // (the POST /api/analysis/:reportId will re-run in the correct language)
   return res.json({ status: 'pending', analysis: null })
 }

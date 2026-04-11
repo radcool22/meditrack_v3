@@ -36,7 +36,7 @@ export default function ReportPage() {
   const autoSpeak = searchParams.get('autoSpeak') === '1'
 
   const { language } = useLanguage()
-  const { analysis, status, loading, error, retry } = useAnalysis(id, language)
+  const { analysis, status, loading, error, retry } = useAnalysis(id)
   const { connect, speak } = useVoice()
 
   const hasSpoken = useRef(false)
@@ -45,7 +45,7 @@ export default function ReportPage() {
     if (!autoSpeak || !analysis?.summary || hasSpoken.current) return
     hasSpoken.current = true
     connect()
-    speak(analysis.summary, 'en-IN')
+    speak(analysis.summary, language === 'hi' ? 'hi-IN' : 'en-IN')
   }, [autoSpeak, analysis?.summary])
 
   const isProcessing = status === 'processing' || (status === 'pending' && !analysis)
