@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken'
 import supabase from '../services/supabase.js'
 import { sendSms } from '../services/twilio.js'
-import { generateOtp, isValidIndianPhone } from '../utils/otp.js'
+import { generateOtp, isValidPhone } from '../utils/otp.js'
 
 export async function updateProfile(req, res) {
   const { userId } = req.user
@@ -35,8 +35,8 @@ export async function updateProfile(req, res) {
 export async function sendOtp(req, res) {
   const { phone_number, mode } = req.body
 
-  if (!phone_number || !isValidIndianPhone(phone_number)) {
-    return res.status(400).json({ error: 'Valid +91 phone number required' })
+  if (!phone_number || !isValidPhone(phone_number)) {
+    return res.status(400).json({ error: 'Valid phone number required' })
   }
 
   // Block sign-up if phone is already registered

@@ -3,11 +3,16 @@ import logo from '../assets/logo.svg'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
-import LangToggle from '../components/LangToggle'
 import axios from 'axios'
 
-const PHONE_RE = /^[6-9]\d{9}$/
+const INDIA_RE = /^[6-9]\d{9}$/
+const USA_RE   = /^\d{10}$/
 const DEV_TEST_PHONE = '0000000000'
+
+const COUNTRY_CODES = [
+  { code: '+91', label: '+91', maxLen: 10, validate: (p) => INDIA_RE.test(p) },
+  { code: '+1',  label: '+1',  maxLen: 10, validate: (p) => USA_RE.test(p) },
+]
 
 export default function LoginPage() {
   const { t } = useTranslation()
@@ -15,6 +20,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
 
   const [mode, setMode] = useState('login') // 'login' | 'signup'
+  const [countryCode, setCountryCode] = useState('+91')
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [step, setStep] = useState('phone') // 'phone' | 'otp'
@@ -27,16 +33,23 @@ export default function LoginPage() {
   const [nameError, setNameError] = useState('')
   const [savedToken, setSavedToken] = useState(null)
 
+  const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) ?? COUNTRY_CODES[0]
+
+  function isValidPhone(p) {
+    if (p === DEV_TEST_PHONE) return true
+    return selectedCountry.validate(p)
+  }
+
   async function handleSendOtp(e) {
     e.preventDefault()
     setError('')
-    if (!PHONE_RE.test(phone) && phone !== DEV_TEST_PHONE) {
+    if (!isValidPhone(phone)) {
       setError(t('invalid_phone'))
       return
     }
     setLoading(true)
     try {
-      await axios.post('/api/auth/send-otp', { phone_number: `+91${phone}`, mode })
+      await axios.post('/api/auth/send-otp', { phone_number: `${countryCode}${phone}`, mode })
       setStep('otp')
     } catch (err) {
       const data = err.response?.data
@@ -54,7 +67,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { data } = await axios.post('/api/auth/verify-otp', {
-        phone_number: `+91${phone}`,
+        phone_number: `${countryCode}${phone}`,
         otp_code: otp,
       })
       login(data.token, data.user)
@@ -92,12 +105,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-900 via-teal-700 to-teal-500 font-sans flex flex-col items-center justify-center px-4">
-
-      {/* Language toggle */}
-      <div className="absolute top-5 right-5">
-        <LangToggle dark />
-      </div>
+    <div
+      className="min-h-screen font-sans flex flex-col items-center justify-center px-4"
+      style={{
+        background: `
+          radial-gradient(ellipse at 80% 30%, rgba(199,243,108,0.62) 0%, transparent 55%),
+          radial-gradient(ellipse at 50% 50%, rgba(199,243,108,0.38) 0%, transparent 55%),
+          radial-gradient(ellipse at 20% 65%, rgba(199,243,108,0.48) 0%, transparent 50%),
+          radial-gradient(ellipse at 60% 80%, rgba(199,243,108,0.32) 0%, transparent 45%),
+          #ffffff
+        `.replace(/\s+/g, ' ').trim(),
+      }}
+    >
 
       {/* Card */}
       <div className="w-full max-w-sm bg-card border border-ink-200/60 rounded-3xl p-8 shadow-2xl">
@@ -137,13 +156,19 @@ export default function LoginPage() {
                 {t('phone_label')}
               </label>
               <div className="flex items-stretch border-2 border-ink-200 rounded-xl overflow-hidden focus-within:border-accent-500 transition-colors">
-                <span className="px-4 flex items-center bg-teal-50 text-teal-700 text-[15px] font-semibold border-r-2 border-ink-200 select-none shrink-0">
-                  +91
-                </span>
+                <select
+                  value={countryCode}
+                  onChange={(e) => { setCountryCode(e.target.value); setPhone('') }}
+                  className="bg-white text-ink-900 text-[17px] font-bold px-3 py-4 border-r-2 border-ink-200 outline-none shrink-0 cursor-pointer appearance-none"
+                >
+                  {COUNTRY_CODES.map(c => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
                 <input
                   type="tel"
                   inputMode="numeric"
-                  maxLength={10}
+                  maxLength={selectedCountry.maxLen}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                   placeholder={t('phone_placeholder')}
@@ -175,7 +200,7 @@ export default function LoginPage() {
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                 placeholder="— — — — — —"
-                className="w-full border-2 border-ink-200 focus:border-teal-600 rounded-xl px-4 py-4 text-center text-2xl font-bold tracking-[0.5em] text-ink-900 outline-none transition-colors bg-white placeholder-ink-200"
+                className="w-full border-2 border-ink-200 focus:border-accent-500 rounded-xl px-4 py-4 text-center text-2xl font-bold tracking-[0.5em] text-ink-900 outline-none transition-colors bg-white placeholder-ink-200"
                 autoFocus
               />
             </div>
@@ -233,7 +258,7 @@ export default function LoginPage() {
                   placeholder={t('name_placeholder')}
                   maxLength={60}
                   autoFocus
-                  className="w-full border-2 border-ink-200 focus:border-teal-600 rounded-xl px-4 py-4 text-[17px] font-medium text-ink-900 placeholder-ink-400 outline-none transition-colors bg-white"
+                  className="w-full border-2 border-ink-200 focus:border-accent-500 rounded-xl px-4 py-4 text-[17px] font-medium text-ink-900 placeholder-ink-400 outline-none transition-colors bg-white"
                 />
               </div>
               {nameError && <p className="text-[13px] text-red-500 font-medium">{nameError}</p>}
