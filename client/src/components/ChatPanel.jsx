@@ -82,6 +82,7 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
   const autoListenRef = useRef(false)
+  const mountedRef = useRef(false)
 
   const singleChat   = useChat(isReportChat ? null : (reportId ?? null))
   const combinedChat = useCombinedChat()
@@ -111,6 +112,7 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
   }
 
   useEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return }
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, sending])
 

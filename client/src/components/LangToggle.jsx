@@ -24,10 +24,10 @@ export default function LangToggle({ dark = false }) {
         aria-label={isHindi ? 'Switch to English' : 'Switch to Hindi'}
         className="relative w-[58px] h-[30px] rounded-full focus:outline-none transition-all"
         style={{
-          background: dark ? 'rgba(255,255,255,0.12)' : '#e4e4e4',
+          background: dark ? 'rgba(52,120,247,0.35)' : 'rgba(52,120,247,0.18)',
           boxShadow: dark
             ? 'inset 1px 1px 4px rgba(0,0,0,0.3), inset -1px -1px 3px rgba(255,255,255,0.1)'
-            : 'inset 2px 2px 5px rgba(0,0,0,0.13), inset -2px -2px 4px rgba(255,255,255,0.85)',
+            : 'inset 2px 2px 5px rgba(52,120,247,0.15), inset -2px -2px 4px rgba(255,255,255,0.85)',
         }}
       >
         {/* Sliding circle with flag */}

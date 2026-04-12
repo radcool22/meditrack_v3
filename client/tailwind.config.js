@@ -4,39 +4,36 @@ export default {
   theme: {
     extend: {
       colors: {
-        // MediTrack design system
         teal: {
-          50:  'rgb(244, 255, 218)',   // very light lime — icon backgrounds
-          100: 'rgb(232, 253, 190)',   // light lime — badge backgrounds
-          200: 'rgb(212, 248, 148)',   // medium-light lime — borders
-          400: 'rgb(199, 243, 108)',   // primary lime — gradient ends
-          500: 'rgb(199, 243, 108)',   // primary lime — border accents, dots
-          600: 'rgb(160, 210, 70)',    // darker lime — hover states
-          700: 'rgb(199, 243, 108)',   // primary lime — main buttons, brand
-          900: 'rgb(72, 115, 10)',     // dark lime — header backgrounds
-          950: 'rgb(40, 70, 5)',       // very dark lime
+          50:  'rgb(244, 255, 218)',
+          100: 'rgb(232, 253, 190)',
+          200: 'rgb(212, 248, 148)',
+          400: 'rgb(199, 243, 108)',
+          500: 'rgb(199, 243, 108)',
+          600: 'rgb(160, 210, 70)',
+          700: 'rgb(199, 243, 108)',
+          900: 'rgb(72, 115, 10)',
+          950: 'rgb(40, 70, 5)',
         },
-        // Orange / coral / amber all map to blue accent
         amber: {
-          50:  'rgb(235, 243, 255)',   // light blue bg
-          100: 'rgb(219, 234, 254)',   // light blue — badge backgrounds
-          200: 'rgb(191, 219, 254)',   // medium blue — borders
-          400: 'rgb(52, 120, 247)',    // primary blue
-          500: 'rgb(40, 96, 207)',     // hover blue
+          50:  'rgb(235, 243, 255)',
+          100: 'rgb(219, 234, 254)',
+          200: 'rgb(191, 219, 254)',
+          400: 'rgb(52, 120, 247)',
+          500: 'rgb(40, 96, 207)',
         },
         orange: {
-          50:  'rgb(235, 243, 255)',   // light blue bg
-          100: 'rgb(219, 234, 254)',   // light blue
-          200: 'rgb(191, 219, 254)',   // medium blue
-          500: 'rgb(52, 120, 247)',    // primary blue
+          50:  'rgb(235, 243, 255)',
+          100: 'rgb(219, 234, 254)',
+          200: 'rgb(191, 219, 254)',
+          500: 'rgb(52, 120, 247)',
         },
         coral: {
-          500: 'rgb(52, 120, 247)',    // primary blue
+          500: 'rgb(52, 120, 247)',
         },
-        // Explicit accent tokens for the exact required RGB values
         accent: {
-          500: 'rgb(52, 120, 247)',    // primary blue accent
-          600: 'rgb(40, 96, 207)',     // hover blue accent
+          500: 'rgb(52, 120, 247)',
+          600: 'rgb(40, 96, 207)',
         },
         surface: '#ffffff',
         card:    '#ffffff',
