@@ -54,6 +54,7 @@ export default function LoginPage() {
     } catch (err) {
       const data = err.response?.data
       if (data?.hint === 'login') setMode('login')
+      if (data?.hint === 'signup') setMode('signup')
       setError(data?.error || t('error_generic'))
     } finally {
       setLoading(false)

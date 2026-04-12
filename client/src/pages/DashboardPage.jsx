@@ -1,154 +1,18 @@
-import { useEffect, useRef } from 'react'
 import logo from '../assets/logo.svg'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
-import { useLanguage } from '../context/LanguageContext'
 import { useReports } from '../hooks/useReports'
 import UploadZone from '../components/UploadZone'
 import ReportCard from '../components/ReportCard'
 import ChatPanel from '../components/ChatPanel'
 import LangToggle from '../components/LangToggle'
-import healthFacts from '../data/healthFacts'
 
-// ── Fact picker ──────────────────────────────────────────────────────
-function pickFact() {
-  const lastIdx = parseInt(localStorage.getItem('lastHealthFactIdx') ?? '-1', 10)
-  let idx
-  do { idx = Math.floor(Math.random() * healthFacts.length) } while (idx === lastIdx && healthFacts.length > 1)
-  localStorage.setItem('lastHealthFactIdx', String(idx))
-  return healthFacts[idx]
-}
-
-// ── Standalone welcome audio — independent of useVoice state ─────────
-async function playWelcomeVoice(text, lang) {
-  console.log('[Welcome] playWelcomeVoice called, text:', text, 'lang:', lang)
-
-  let audioCtx
-  try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-    console.log('[Welcome] AudioContext created, state:', audioCtx.state)
-    if (audioCtx.state === 'suspended') {
-      await audioCtx.resume()
-      console.log('[Welcome] AudioContext resumed')
-    }
-  } catch (e) {
-    console.warn('[Welcome] AudioContext failed:', e)
-    return
-  }
-
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  const wsUrl = `${protocol}://${window.location.host}/ws/tts`
-  console.log('[Welcome] Opening WS to', wsUrl)
-
-  const ws = new WebSocket(wsUrl)
-  ws.binaryType = 'arraybuffer'
-
-  const chunks = []
-  let played = false
-
-  function playChunks() {
-    if (played) return
-    if (chunks.length === 0) { console.warn('[Welcome] done/close fired but 0 chunks'); return }
-    played = true
-
-    const total = chunks.reduce((s, c) => s + c.length, 0)
-    const merged = new Uint8Array(total)
-    let offset = 0
-    for (const c of chunks) { merged.set(c, offset); offset += c.length }
-
-    console.log('[Welcome] Decoding', total, 'bytes across', chunks.length, 'chunks')
-    audioCtx.decodeAudioData(merged.buffer.slice(0))
-      .then((buffer) => {
-        const source = audioCtx.createBufferSource()
-        source.buffer = buffer
-        source.connect(audioCtx.destination)
-        source.onended = () => {
-          console.log('[Welcome] Playback ended')
-          audioCtx.close()
-        }
-        source.start(0)
-        console.log('[Welcome] Playback started, duration:', buffer.duration.toFixed(2), 's')
-      })
-      .catch((e) => console.warn('[Welcome] decodeAudioData failed:', e))
-  }
-
-  ws.onopen = () => {
-    console.log('[Welcome] WS opened, sending speak request')
-    ws.send(JSON.stringify({ type: 'speak', text, lang }))
-  }
-
-  ws.onmessage = (e) => {
-    if (e.data instanceof ArrayBuffer) {
-      chunks.push(new Uint8Array(e.data))
-      console.log('[Welcome] audio chunk:', e.data.byteLength, 'bytes, total chunks:', chunks.length)
-      return
-    }
-    try {
-      const msg = JSON.parse(e.data.toString())
-      console.log('[Welcome] JSON from server:', msg.type)
-      if (msg.type === 'done') { playChunks(); ws.close() }
-      else if (msg.type === 'error') { console.warn('[Welcome] server TTS error'); ws.close() }
-    } catch {}
-  }
-
-  ws.onclose = (e) => {
-    console.log('[Welcome] WS closed, code:', e.code, 'played:', played, 'chunks:', chunks.length)
-    if (!played && chunks.length > 0) playChunks()
-  }
-
-  ws.onerror = (e) => console.warn('[Welcome] WS error:', e)
-}
-
-// ── Dashboard ────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { t } = useTranslation()
   const { user, logout } = useAuth()
-  const { language } = useLanguage()
   const { reports, loading, error, upload, deleteReport } = useReports()
 
   const hasDoneReports = reports.some((r) => r.status === 'done')
-
-  // Refs so the listener closure always has fresh values without re-registering
-  const greetingRef = useRef(null)
-  const langRef     = useRef(null)
-  const firedRef    = useRef(false)
-
-  useEffect(() => {
-    // Only prepare once per session
-    if (sessionStorage.getItem('welcomePlayed')) return
-    // Wait until user is available
-    if (!user) return
-
-    const fact = pickFact()
-    const firstName = user.name?.split(' ')[0]
-    greetingRef.current = firstName
-      ? `Welcome back ${firstName}. Did you know — ${fact}`
-      : `Did you know — ${fact}`
-    langRef.current = language === 'hi' ? 'hi-IN' : 'en-IN'
-
-    console.log('[Welcome] Greeting prepared:', greetingRef.current)
-    console.log('[Welcome] Waiting for first user interaction (autoplay policy)')
-
-    function onFirstInteraction() {
-      if (firedRef.current) return
-      firedRef.current = true
-      sessionStorage.setItem('welcomePlayed', '1')
-      document.removeEventListener('click', onFirstInteraction, true)
-      document.removeEventListener('touchstart', onFirstInteraction, true)
-      console.log('[Welcome] First interaction — firing playWelcomeVoice')
-      playWelcomeVoice(greetingRef.current, langRef.current).catch((e) => {
-        console.warn('[Welcome] playWelcomeVoice threw:', e)
-      })
-    }
-
-    document.addEventListener('click', onFirstInteraction, true)
-    document.addEventListener('touchstart', onFirstInteraction, true)
-
-    return () => {
-      document.removeEventListener('click', onFirstInteraction, true)
-      document.removeEventListener('touchstart', onFirstInteraction, true)
-    }
-  }, [user])
 
   return (
     <div className="min-h-screen bg-surface font-sans">

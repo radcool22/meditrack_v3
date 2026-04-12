@@ -39,25 +39,30 @@ export async function sendOtp(req, res) {
     return res.status(400).json({ error: 'Valid phone number required' })
   }
 
-  // Block sign-up if phone is already registered
-  console.log('[sendOtp] mode:', mode, 'phone:', phone_number)
-  if (mode === 'signup') {
-    const { data: existing, error: checkErr } = await supabase
-      .from('users')
-      .select('id')
-      .eq('phone_number', phone_number)
-      .maybeSingle()
-    console.log('[sendOtp] existing user:', existing, 'checkErr:', checkErr?.message)
-    if (checkErr) {
-      console.error('User check error:', checkErr.message)
-      return res.status(500).json({ error: 'Internal error' })
-    }
-    if (existing) {
-      return res.status(409).json({
-        error: 'This number is already registered. Please log in instead.',
-        hint: 'login',
-      })
-    }
+  // Check user existence based on mode
+  const { data: existing, error: checkErr } = await supabase
+    .from('users')
+    .select('id')
+    .eq('phone_number', phone_number)
+    .maybeSingle()
+
+  if (checkErr) {
+    console.error('User check error:', checkErr.message)
+    return res.status(500).json({ error: 'Internal error' })
+  }
+
+  if (mode === 'signup' && existing) {
+    return res.status(409).json({
+      error: 'This number is already registered. Please log in instead.',
+      hint: 'login',
+    })
+  }
+
+  if (mode === 'login' && !existing) {
+    return res.status(404).json({
+      error: 'No account found for this number. Please sign up first.',
+      hint: 'signup',
+    })
   }
 
   // Dev bypass: +910000000000 → no Twilio, no DB insert
