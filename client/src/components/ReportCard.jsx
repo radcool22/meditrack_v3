@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { unlockAudio } from '../utils/sharedAudio'
 
 function formatReportDate(report) {
   if (report.report_date) {
@@ -49,7 +50,7 @@ export default function ReportCard({ report, onDelete }) {
 
   return (
     <div
-      onClick={() => !confirming && navigate(`/report/${report.id}`)}
+      onClick={() => { if (!confirming) { unlockAudio(); navigate(`/report/${report.id}?autoSpeak=1`) } }}
       className="bg-card border border-ink-200/60 rounded-2xl p-5 flex items-start justify-between gap-4 hover:shadow-md transition-shadow cursor-pointer shadow-sm"
     >
       <div className="flex items-start gap-3 min-w-0">
@@ -79,7 +80,7 @@ export default function ReportCard({ report, onDelete }) {
 
         {isDone && !confirming && (
           <button
-            onClick={(e) => { e.stopPropagation(); navigate(`/report/${report.id}`) }}
+            onClick={(e) => { e.stopPropagation(); unlockAudio(); navigate(`/report/${report.id}?autoSpeak=1`) }}
             className="text-[13px] font-semibold bg-accent-500 text-white hover:bg-accent-600 px-4 py-2 rounded-xl transition-colors shadow-sm"
           >
             {t('summary')}

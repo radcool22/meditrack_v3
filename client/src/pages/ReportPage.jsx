@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAnalysis } from '../hooks/useAnalysis'
+import { useVoice } from '../hooks/useVoice'
 import { useLanguage } from '../context/LanguageContext'
 import LangToggle from '../components/LangToggle'
 import ChatPanel from '../components/ChatPanel'
@@ -37,9 +38,21 @@ function Spinner({ label }) {
 export default function ReportPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { t } = useTranslation()
+  const autoSpeak = searchParams.get('autoSpeak') === '1'
 
+  const { language } = useLanguage()
   const { analysis, reportTitle, reportDate, status, loading, error, retry } = useAnalysis(id)
+  const { connect, speak } = useVoice()
+  const hasSpoken = useRef(false)
+
+  useEffect(() => {
+    if (!autoSpeak || !analysis?.summary || hasSpoken.current) return
+    hasSpoken.current = true
+    connect()
+    speak(analysis.summary, language === 'hi' ? 'hi-IN' : 'en-IN')
+  }, [autoSpeak, analysis?.summary])
 
   const isProcessing = status === 'processing' || (status === 'pending' && !analysis)
 
