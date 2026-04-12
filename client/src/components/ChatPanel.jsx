@@ -80,9 +80,7 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
 
   const [mode, setMode] = useState('voice') // 'text' | 'voice'
   const [input, setInput] = useState('')
-  const bottomRef = useRef(null)
   const autoListenRef = useRef(false)
-  const mountedRef = useRef(false)
 
   const singleChat   = useChat(isReportChat ? null : (reportId ?? null))
   const combinedChat = useCombinedChat()
@@ -110,11 +108,6 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
     speaking:  t('mic_speaking'),
     error:     '',
   }
-
-  useEffect(() => {
-    if (!mountedRef.current) { mountedRef.current = true; return }
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, sending])
 
   // Auto-start listening as soon as connection is ready
   useEffect(() => {
@@ -219,7 +212,6 @@ export default function ChatPanel({ reportId, isReportChat = false, greetingMess
             </div>
           </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
       {/* Input area */}
