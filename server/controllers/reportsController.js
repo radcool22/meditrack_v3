@@ -2,7 +2,7 @@ import supabase from '../services/supabase.js'
 
 const MIME_TO_TYPE = {
   'image/jpeg': 'jpg',
-  'image/png': 'png',
+  'image/png':  'png',
   'application/pdf': 'pdf',
 }
 
@@ -34,13 +34,13 @@ export async function uploadReport(req, res) {
   const { data: report, error: dbError } = await supabase
     .from('reports')
     .insert({
-      user_id: userId,
+      user_id:   userId,
       file_name: originalname,
-      file_url: fileUrl,
+      file_url:  fileUrl,
       file_type: fileType,
-      status: 'pending',
+      status:    'pending',
     })
-    .select('id, file_name, file_url, file_type, status, uploaded_at')
+    .select('id, file_name, file_url, file_type, status, uploaded_at, report_date, report_title')
     .single()
 
   if (dbError) {
@@ -56,7 +56,7 @@ export async function getReports(req, res) {
 
   const { data: reports, error } = await supabase
     .from('reports')
-    .select('id, file_name, file_url, file_type, status, uploaded_at')
+    .select('id, file_name, file_url, file_type, status, uploaded_at, report_date, report_title')
     .eq('user_id', userId)
     .order('uploaded_at', { ascending: false })
 
@@ -83,8 +83,6 @@ export async function deleteReport(req, res) {
     return res.status(404).json({ error: 'Report not found' })
   }
 
-  // Derive storage path from public URL
-  // URL format: {SUPABASE_URL}/storage/v1/object/public/{bucket}/{path}
   const bucket = process.env.SUPABASE_STORAGE_BUCKET
   const prefix = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucket}/`
   const storagePath = report.file_url.startsWith(prefix)
@@ -96,7 +94,6 @@ export async function deleteReport(req, res) {
     if (storageErr) console.error('Storage delete error:', storageErr.message)
   }
 
-  // Delete DB row — cascade removes report_analyses and chat_messages
   const { error: dbErr } = await supabase.from('reports').delete().eq('id', id).eq('user_id', userId)
   if (dbErr) {
     console.error('Report delete error:', dbErr.message)
@@ -112,7 +109,7 @@ export async function getReport(req, res) {
 
   const { data: report, error } = await supabase
     .from('reports')
-    .select('id, file_name, file_url, file_type, status, uploaded_at, structured_data')
+    .select('id, file_name, file_url, file_type, status, uploaded_at, report_date, report_title, structured_data')
     .eq('id', id)
     .eq('user_id', userId)
     .maybeSingle()

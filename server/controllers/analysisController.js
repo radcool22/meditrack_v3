@@ -49,7 +49,14 @@ export async function runAnalysis(req, res) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
-    if (existing) return res.json({ analysis: existing })
+    if (existing) {
+      const { data: rpt } = await supabase
+        .from('reports')
+        .select('report_title, report_date')
+        .eq('id', reportId)
+        .single()
+      return res.json({ analysis: existing, report_title: rpt?.report_title ?? null, report_date: rpt?.report_date ?? null })
+    }
     // No analysis row yet — fall through to generate
   }
 
@@ -74,17 +81,18 @@ export async function runAnalysis(req, res) {
     const parsed = await runGptAnalysis(buildStructureAndAnalysePrompt(rawText, 'en'))
     const { structured_data: structuredRaw, analysis: enAnalysis } = parsed
 
-    // Extract report_date and tests array
-    const reportDate = structuredRaw?.report_date ?? null
-    const testsArray = Array.isArray(structuredRaw?.tests) ? structuredRaw.tests
-                     : Array.isArray(structuredRaw) ? structuredRaw  // backwards compat
-                     : []
+    // Extract report_date, report_title and tests array
+    const reportDate  = structuredRaw?.report_date ?? null
+    const reportTitle = enAnalysis.report_title ?? null
+    const testsArray  = Array.isArray(structuredRaw?.tests) ? structuredRaw.tests
+                      : Array.isArray(structuredRaw) ? structuredRaw
+                      : []
     const structured_data = testsArray
 
-    // 6. Save structured data + report_date + mark done
+    // 6. Save structured data + report_date + report_title + mark done
     await supabase
       .from('reports')
-      .update({ structured_data, report_date: reportDate, status: 'done' })
+      .update({ structured_data, report_date: reportDate, report_title: reportTitle, status: 'done' })
       .eq('id', reportId)
 
     // 7. Insert analysis row (English only)
@@ -105,7 +113,7 @@ export async function runAnalysis(req, res) {
       return res.status(500).json({ error: 'Failed to save analysis' })
     }
 
-    return res.json({ analysis: analysisRow })
+    return res.json({ analysis: analysisRow, report_title: reportTitle, report_date: reportDate })
   } catch (err) {
     console.error('Pipeline error:', err.message)
     await supabase
@@ -120,10 +128,10 @@ export async function getAnalysis(req, res) {
   const { reportId } = req.params
   const { userId } = req.user
 
-  // Verify report ownership
+  // Verify report ownership and get metadata
   const { data: report } = await supabase
     .from('reports')
-    .select('id, status')
+    .select('id, status, report_title, report_date')
     .eq('id', reportId)
     .eq('user_id', userId)
     .maybeSingle()
@@ -139,8 +147,13 @@ export async function getAnalysis(req, res) {
     .maybeSingle()
 
   if (analysis) {
-    return res.json({ status: report.status, analysis })
+    return res.json({
+      status: report.status,
+      analysis,
+      report_title: report.report_title ?? null,
+      report_date:  report.report_date  ?? null,
+    })
   }
 
-  return res.json({ status: 'pending', analysis: null })
+  return res.json({ status: 'pending', analysis: null, report_title: null, report_date: null })
 }

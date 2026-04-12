@@ -19,6 +19,13 @@ const FLAG_VALUE_COLOR = {
   ABNORMAL: 'text-orange-500',
 }
 
+function formatDate(dateStr) {
+  if (!dateStr) return 'Date unknown'
+  return new Date(dateStr).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  })
+}
+
 function Spinner({ label }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -36,7 +43,7 @@ export default function ReportPage() {
   const autoSpeak = searchParams.get('autoSpeak') === '1'
 
   const { language } = useLanguage()
-  const { analysis, status, loading, error, retry } = useAnalysis(id)
+  const { analysis, reportTitle, reportDate, status, loading, error, retry } = useAnalysis(id)
   const { connect, speak } = useVoice()
 
   const hasSpoken = useRef(false)
@@ -89,6 +96,17 @@ export default function ReportPage() {
 
         {analysis && (
           <>
+            {/* 1. Title + date heading */}
+            <section className="bg-card border border-ink-200/60 rounded-2xl px-6 py-5 shadow-sm">
+              <h2 className="text-[20px] font-bold text-ink-900 leading-snug">
+                {reportTitle ?? t('report_analysis')}
+              </h2>
+              <p className="text-[13px] text-ink-400 font-medium mt-1">
+                {formatDate(reportDate)}
+              </p>
+            </section>
+
+            {/* 2. Summary */}
             <section className="bg-card border border-ink-200/60 rounded-2xl p-6 shadow-sm border-l-4 border-l-teal-500">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-3">
                 {t('summary')}
@@ -96,6 +114,23 @@ export default function ReportPage() {
               <p className="text-[15px] text-ink-900 leading-relaxed">{analysis.summary}</p>
             </section>
 
+            {/* 3. Chat */}
+            <section>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex-1 h-px bg-ink-200/60" />
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-400 shrink-0">
+                  {t('ask_about_report')}
+                </h2>
+                <div className="flex-1 h-px bg-ink-200/60" />
+              </div>
+              <ChatPanel
+                reportId={id}
+                isReportChat={true}
+                greetingMessage={t('report_chat_greeting')}
+              />
+            </section>
+
+            {/* 4a. Values that need attention */}
             {analysis.abnormal_values?.length > 0 && (
               <section className="bg-card border border-ink-200/60 rounded-2xl p-6 shadow-sm">
                 <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-4">
@@ -105,22 +140,22 @@ export default function ReportPage() {
                   {analysis.abnormal_values.map((item, i) => (
                     <div
                       key={i}
-                      className={`border rounded-2xl p-4 flex flex-col shadow-sm ${FLAG_STYLES[item.flag] ?? 'bg-surface border-ink-200'}`}
+                      className="bg-black border border-black rounded-2xl p-4 flex flex-col shadow-sm"
                     >
                       <div className="flex items-start justify-between gap-1 mb-2">
-                        <span className="text-[12px] font-bold text-ink-900 leading-tight flex-1">{item.test}</span>
-                        <span className={`text-[13px] font-bold shrink-0 ${FLAG_VALUE_COLOR[item.flag] ?? 'text-ink-600'}`}>
+                        <span className="text-[12px] font-bold text-red-400 leading-tight flex-1">{item.test}</span>
+                        <span className="text-[13px] font-bold shrink-0 text-white/70">
                           {item.flag === 'HIGH' ? '↑' : item.flag === 'LOW' ? '↓' : '!'}
                         </span>
                       </div>
-                      <p className={`text-[20px] font-extrabold leading-none mb-2 ${FLAG_VALUE_COLOR[item.flag] ?? 'text-ink-900'}`}>
+                      <p className="text-[20px] font-extrabold leading-none mb-2 text-white">
                         {item.value}
                       </p>
-                      <p className="text-[12px] text-ink-600 leading-relaxed flex-1">
+                      <p className="text-[12px] text-white/70 leading-relaxed flex-1">
                         {item.plain_explanation}
                       </p>
                       {item.normal_range && (
-                        <p className="text-[11px] text-ink-400 font-medium mt-2">
+                        <p className="text-[11px] text-white/50 font-medium mt-2">
                           {t('normal_range')} {item.normal_range}
                         </p>
                       )}
@@ -130,6 +165,7 @@ export default function ReportPage() {
               </section>
             )}
 
+            {/* 4b. All clear */}
             {analysis.abnormal_values?.length === 0 && (
               <section className="bg-teal-50 border border-teal-200 rounded-2xl px-5 py-5 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center shrink-0">
@@ -141,6 +177,7 @@ export default function ReportPage() {
               </section>
             )}
 
+            {/* 4c. Suggestions */}
             {analysis.suggestions?.length > 0 && (
               <section className="bg-card border border-ink-200/60 rounded-2xl p-6 shadow-sm">
                 <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-4">
@@ -159,24 +196,6 @@ export default function ReportPage() {
               </section>
             )}
           </>
-        )}
-
-        {/* Report-specific chat — only shown once analysis is ready */}
-        {analysis && (
-          <section>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex-1 h-px bg-ink-200/60" />
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-400 shrink-0">
-                {t('ask_about_report')}
-              </h2>
-              <div className="flex-1 h-px bg-ink-200/60" />
-            </div>
-            <ChatPanel
-              reportId={id}
-              isReportChat={true}
-              greetingMessage={t('report_chat_greeting')}
-            />
-          </section>
         )}
       </main>
     </div>

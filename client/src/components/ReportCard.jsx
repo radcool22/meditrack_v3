@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 function formatReportDate(report) {
-  const src = report.report_date ?? report.uploaded_at
-  return new Date(src).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric',
-  })
+  if (report.report_date) {
+    return new Date(report.report_date).toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'short', year: 'numeric',
+    })
+  }
+  return 'Date unknown'
 }
 
 const FILE_TYPE_BADGE = {
@@ -55,7 +57,7 @@ export default function ReportCard({ report, onDelete }) {
           {report.file_type}
         </span>
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold text-ink-900 truncate">{report.file_name}</p>
+          <p className="text-[15px] font-semibold text-ink-900 truncate">{report.report_title ?? report.file_name}</p>
           <p className="text-[13px] text-ink-400 mt-0.5 font-medium">{dateLabel}</p>
         </div>
       </div>

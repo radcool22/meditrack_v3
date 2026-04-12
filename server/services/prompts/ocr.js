@@ -42,6 +42,7 @@ Flag rules:
 
 "analysis" must be an object:
 {
+  "report_title": "Short title in the format 'Type of Test — Lab Name', e.g. 'Blood Test — Dr. Lal PathLabs', 'Liver Function Test — SRL Diagnostics', 'Thyroid Panel — Metropolis'. Extract the lab name from the report text if visible; omit the lab part if not found.",
   "summary": "2–3 sentence plain summary of the overall report — what is being tested and the big picture finding. Class 8 reading level. No medical jargon.",
   "abnormal_values": [
     {

@@ -4,19 +4,18 @@ import { useAuth } from '../context/AuthContext'
 
 export function useAnalysis(reportId) {
   const { token } = useAuth()
-  const [analysis, setAnalysis] = useState(null)
-  const [status, setStatus] = useState(null) // pending | processing | done | failed
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [analysis, setAnalysis]       = useState(null)
+  const [reportTitle, setReportTitle] = useState(null)
+  const [reportDate, setReportDate]   = useState(null)
+  const [status, setStatus]           = useState(null)
+  const [loading, setLoading]         = useState(true)
+  const [error, setError]             = useState('')
   const pollRef = useRef(null)
 
   const headers = { Authorization: `Bearer ${token}` }
 
   function stopPolling() {
-    if (pollRef.current) {
-      clearInterval(pollRef.current)
-      pollRef.current = null
-    }
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
   }
 
   async function trigger() {
@@ -25,6 +24,8 @@ export function useAnalysis(reportId) {
     try {
       const { data } = await axios.post(`/api/analysis/${reportId}`, {}, { headers })
       setAnalysis(data.analysis)
+      if (data.report_title) setReportTitle(data.report_title)
+      if (data.report_date)  setReportDate(data.report_date)
       setStatus('done')
     } catch (err) {
       const msg = err.response?.data?.error || err.message || 'Analysis failed'
@@ -33,17 +34,15 @@ export function useAnalysis(reportId) {
     }
   }
 
-  function retry() {
-    trigger()
-  }
+  function retry() { trigger() }
 
   async function fetchStatus() {
     try {
       const { data } = await axios.get(`/api/analysis/${reportId}`, { headers })
       setStatus(data.status)
-      if (data.analysis) {
-        setAnalysis(data.analysis)
-      }
+      if (data.analysis)      setAnalysis(data.analysis)
+      if (data.report_title)  setReportTitle(data.report_title)
+      if (data.report_date)   setReportDate(data.report_date)
       if (data.status === 'done' || data.status === 'failed') {
         stopPolling()
         setLoading(false)
@@ -57,20 +56,18 @@ export function useAnalysis(reportId) {
 
   useEffect(() => {
     if (!reportId || !token) return
-
     setAnalysis(null)
+    setReportTitle(null)
+    setReportDate(null)
     setStatus(null)
     setError('')
     setLoading(true)
     stopPolling()
-
     fetchStatus().then(() => {})
     setLoading(false)
-
     return () => stopPolling()
   }, [reportId, token])
 
-  // Start polling when status becomes processing
   useEffect(() => {
     if (status === 'processing' && !pollRef.current) {
       pollRef.current = setInterval(fetchStatus, 3000)
@@ -81,7 +78,6 @@ export function useAnalysis(reportId) {
     }
   }, [status])
 
-  // Auto-trigger analysis if report is pending (just uploaded, no analysis yet)
   useEffect(() => {
     if (status === 'pending' && analysis === null) {
       setStatus('processing')
@@ -89,5 +85,5 @@ export function useAnalysis(reportId) {
     }
   }, [status])
 
-  return { analysis, status, loading, error, retry }
+  return { analysis, reportTitle, reportDate, status, loading, error, retry }
 }

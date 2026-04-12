@@ -302,51 +302,6 @@ export default function HealthSidebar() {
         </button>
       </div>
 
-      {/* ── Mobile: floating button + bottom drawer ── */}
-      <div className="lg:hidden">
-        {!open && (
-          <button
-            onClick={() => setOpen(true)}
-            aria-label="Open health tools"
-            className="fixed bottom-5 right-5 z-50 w-14 h-14 bg-black hover:bg-ink-600 text-white rounded-full flex items-center justify-center shadow-xl transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-              <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.219l-.022.012-.007.004-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z" />
-            </svg>
-          </button>
-        )}
-
-        {open && (
-          <div
-            className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-          />
-        )}
-
-        <div
-          className={`fixed bottom-0 left-0 right-0 z-50 bg-surface rounded-t-3xl shadow-2xl transition-transform duration-300 ease-in-out ${
-            open ? 'translate-y-0' : 'translate-y-full'
-          }`}
-          style={{ maxHeight: '85vh' }}
-        >
-          <div className="flex items-center justify-between px-4 pt-4 pb-2 relative">
-            <div className="w-10 h-1 bg-ink-200 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-3" />
-            <div />
-            <button
-              onClick={() => setOpen(false)}
-              className="text-ink-400 hover:text-ink-900 transition-colors ml-auto"
-              aria-label="Close"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-              </svg>
-            </button>
-          </div>
-          <div className="overflow-y-auto" style={{ maxHeight: 'calc(85vh - 56px)' }}>
-            <SidebarContent />
-          </div>
-        </div>
-      </div>
     </>
   )
 }
