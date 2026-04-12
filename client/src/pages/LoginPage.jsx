@@ -234,6 +234,20 @@ export default function LoginPage() {
         )}
       </div>
 
+      {/* Terms */}
+      <p className="mt-5 text-center text-[12px] text-ink-400 max-w-xs leading-relaxed">
+        By signing up or logging in, you agree to our{' '}
+        <a
+          href="https://www.meditrack.in/terms-of-use"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-ink-900 transition-colors"
+        >
+          Terms of Use
+        </a>
+        .
+      </p>
+
       {/* Name modal */}
       {showNameModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 z-50">
