@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
+import { friendly } from '../utils/friendlyError'
 
 export function useReportChat(reportId) {
   const { token } = useAuth()
@@ -17,7 +18,7 @@ export function useReportChat(reportId) {
     axios
       .get(`/api/chat/${reportId}/report-chat/history`, { headers })
       .then(({ data }) => setMessages(data.messages ?? []))
-      .catch(() => setError('Failed to load chat history'))
+      .catch(() => setError(friendly('the chat history not loading')))
       .finally(() => setLoading(false))
   }, [reportId, token])
 
@@ -48,7 +49,7 @@ export function useReportChat(reportId) {
         setMessages((prev) => [...prev, assistantMsg])
         return data.reply
       } catch (err) {
-        setError(err.response?.data?.error || 'Failed to send message')
+        setError(friendly('your message not being sent'))
         setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
         return null
       } finally {

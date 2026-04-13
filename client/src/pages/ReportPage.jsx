@@ -197,6 +197,17 @@ export default function ReportPage() {
           </>
         )}
       </main>
+
+      <footer className="py-6 text-center text-[12px] text-ink-400">
+        <a
+          href="https://www.meditrack.in/terms-of-use"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-ink-900 transition-colors"
+        >
+          Terms of Use
+        </a>
+      </footer>
     </div>
   )
 }

@@ -1,26 +1,29 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { friendly } from '../utils/friendlyError'
 
 /**
  * Voice mode.
  *
- * STT : browser-native SpeechRecognition (continuous mode).
- *       Recording does NOT auto-stop on silence — user must explicitly
- *       call confirmListening() to process or cancelListening() to discard.
+ * STT : browser-native SpeechRecognition.
+ *       Mobile browsers (iOS Safari) ignore continuous:true and auto-stop
+ *       after each pause. We work around this by restarting the recogniser
+ *       whenever it stops unexpectedly, accumulating the transcript across
+ *       sessions until the user explicitly taps ✓ or ✗.
  * TTS : ElevenLabs WebSocket streaming via /ws/tts backend proxy.
- *       AudioContext is unlocked on the first user tap (connect()),
- *       so audio.play() is never blocked by the browser's autoplay policy.
  */
 export function useVoice() {
   const [voiceState, setVoiceState] = useState('idle')
   const [errorMsg, setErrorMsg]     = useState('')
 
-  const recognitionRef        = useRef(null)
-  const ttsWsRef              = useRef(null)
-  const audioCtxRef           = useRef(null)
-  const sourceNodeRef         = useRef(null)
-  const audioRef              = useRef(null)
-  const pendingConfirmRef     = useRef(false)
-  const transcriptRef         = useRef('')
+  const recognitionRef          = useRef(null)
+  const ttsWsRef                = useRef(null)
+  const audioCtxRef             = useRef(null)
+  const sourceNodeRef           = useRef(null)
+  const audioRef                = useRef(null)
+  const pendingConfirmRef       = useRef(false)
+  const cancelledRef            = useRef(false)
+  const transcriptRef           = useRef('')
+  const accumulatedRef          = useRef('')   // carries text across mobile auto-restarts
   const onTranscriptCallbackRef = useRef(null)
 
   const isSupported =
@@ -31,7 +34,7 @@ export function useVoice() {
   const connect = useCallback(() => {
     setErrorMsg('')
     if (!isSupported) {
-      setErrorMsg('Voice input is not supported in this browser. Please use Chrome or Safari.')
+      setErrorMsg(friendly('voice input not being supported in this browser — please use Chrome or Safari'))
       setVoiceState('error')
       return
     }
@@ -47,65 +50,82 @@ export function useVoice() {
     setVoiceState('ready')
   }, [isSupported])
 
-  // ── Start listening (continuous — waits for confirmListening) ─────────
+  // ── Start listening ───────────────────────────────────────────────────
   const startListening = useCallback((onTranscript, lang = 'en-IN') => {
     if (voiceState !== 'ready') return
 
-    transcriptRef.current = ''
+    transcriptRef.current   = ''
+    accumulatedRef.current  = ''
     pendingConfirmRef.current = false
+    cancelledRef.current    = false
     onTranscriptCallbackRef.current = onTranscript
 
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    const r  = new SR()
-    r.lang            = lang
-    r.continuous      = true
-    r.interimResults  = false
-    r.maxAlternatives = 1
-    recognitionRef.current = r
+    function createAndStart() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+      const r  = new SR()
+      r.lang            = lang
+      r.continuous      = true   // respected on desktop; mobile ignores but we handle onend
+      r.interimResults  = false
+      r.maxAlternatives = 1
+      recognitionRef.current = r
 
-    r.onstart = () => setVoiceState('listening')
+      r.onstart = () => setVoiceState('listening')
 
-    r.onresult = (e) => {
-      // Accumulate all final segments
-      let text = ''
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          text += e.results[i][0].transcript + ' '
+      r.onresult = (e) => {
+        // Collect all final segments from this session, prepend accumulated text
+        let sessionText = ''
+        for (let i = 0; i < e.results.length; i++) {
+          if (e.results[i].isFinal) sessionText += e.results[i][0].transcript + ' '
         }
+        transcriptRef.current = (accumulatedRef.current + sessionText).trim()
       }
-      transcriptRef.current = text.trim()
-    }
 
-    r.onerror = (e) => {
-      const msg =
-        e.error === 'not-allowed' ? 'Microphone access denied. Please allow microphone in your browser settings.' :
-        e.error === 'no-speech'   ? 'No speech detected. Please try again.' :
-        e.error === 'network'     ? 'Network error. Please check your connection.' :
-        'Could not recognise speech. Please try again.'
-      setErrorMsg(msg)
-      setVoiceState('ready')
-    }
+      r.onerror = (e) => {
+        // no-speech fires constantly on mobile during restarts — ignore silently
+        if (e.error === 'no-speech') return
+        const msg =
+          e.error === 'not-allowed' ? friendly('microphone access being denied — please allow it in your browser settings') :
+          e.error === 'network'     ? friendly('a network error while using the microphone') :
+          friendly('speech not being recognised')
+        setErrorMsg(msg)
+        cancelledRef.current = true
+        setVoiceState('ready')
+      }
 
-    r.onend = () => {
-      if (pendingConfirmRef.current) {
-        pendingConfirmRef.current = false
-        const text = transcriptRef.current
-        if (text) {
-          setVoiceState('thinking')
-          onTranscriptCallbackRef.current?.(text)
-        } else {
-          setVoiceState('ready')
+      r.onend = () => {
+        if (pendingConfirmRef.current) {
+          // User tapped ✓
+          pendingConfirmRef.current = false
+          const text = transcriptRef.current
+          if (text) {
+            setVoiceState('thinking')
+            onTranscriptCallbackRef.current?.(text)
+          } else {
+            setVoiceState('ready')
+          }
+        } else if (!cancelledRef.current) {
+          // Browser auto-stopped (mobile) — save progress and restart
+          accumulatedRef.current = transcriptRef.current
+            ? transcriptRef.current + ' '
+            : accumulatedRef.current
+          try {
+            createAndStart()
+          } catch {
+            setVoiceState('ready')
+          }
         }
-      } else {
-        // Cancelled or browser auto-ended (long silence on some browsers)
+        // If cancelledRef is true, cancelListening already set state to ready
+      }
+
+      try {
+        r.start()
+      } catch {
+        setErrorMsg(friendly('the microphone not starting'))
         setVoiceState('ready')
       }
     }
 
-    try { r.start() } catch {
-      setErrorMsg('Could not start microphone. Please try again.')
-      setVoiceState('ready')
-    }
+    createAndStart()
   }, [voiceState])
 
   // ── Confirm — stop and process the accumulated transcript ─────────────
@@ -116,8 +136,10 @@ export function useVoice() {
 
   // ── Cancel — abort without processing ────────────────────────────────
   const cancelListening = useCallback(() => {
+    cancelledRef.current      = true
     pendingConfirmRef.current = false
-    transcriptRef.current = ''
+    transcriptRef.current     = ''
+    accumulatedRef.current    = ''
     recognitionRef.current?.abort()
     setVoiceState('ready')
     setErrorMsg('')
@@ -193,6 +215,7 @@ export function useVoice() {
 
   // ── Disconnect ───────────────────────────────────────────────────────
   const disconnect = useCallback(() => {
+    cancelledRef.current = true   // prevent auto-restart loop on cleanup
     recognitionRef.current?.abort()
     ttsWsRef.current?.close()
     sourceNodeRef.current?.stop()

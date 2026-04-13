@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
+import { friendly } from '../utils/friendlyError'
 
 export function useChat(reportId) {
   const { token } = useAuth()
@@ -17,7 +18,7 @@ export function useChat(reportId) {
     axios
       .get(`/api/chat/${reportId}/history`, { headers })
       .then(({ data }) => setMessages(data.messages ?? []))
-      .catch(() => setError('Failed to load chat history'))
+      .catch(() => setError(friendly('the chat history not loading')))
       .finally(() => setLoading(false))
   }, [reportId, token])
 
@@ -25,14 +26,12 @@ export function useChat(reportId) {
     async (text) => {
       if (!text.trim() || sending) return
 
-      // Optimistic user bubble
       const userMsg = { id: Date.now(), role: 'user', content: text.trim(), message_type: 'text' }
       setMessages((prev) => [...prev, userMsg])
       setSending(true)
       setError('')
 
       try {
-        // Pass current history (excluding the optimistic entry) as context
         const history = messages.map((m) => ({ role: m.role, content: m.content }))
         const { data } = await axios.post(
           `/api/chat/${reportId}`,
@@ -47,9 +46,8 @@ export function useChat(reportId) {
         }
         setMessages((prev) => [...prev, assistantMsg])
         return data.reply
-      } catch (err) {
-        setError(err.response?.data?.error || 'Failed to send message')
-        // Remove optimistic bubble on failure
+      } catch {
+        setError(friendly('your message not being sent'))
         setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
         return null
       } finally {
@@ -59,7 +57,6 @@ export function useChat(reportId) {
     [messages, sending, reportId, token]
   )
 
-  // Called by voice mode to append a saved voice turn to the thread
   const appendVoiceTurn = useCallback((userText, assistantText) => {
     const now = Date.now()
     setMessages((prev) => [

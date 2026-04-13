@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
+import { friendly } from '../utils/friendlyError'
 
 export function useAnalysis(reportId) {
   const { token } = useAuth()
@@ -28,8 +29,7 @@ export function useAnalysis(reportId) {
       if (data.report_date)  setReportDate(data.report_date)
       setStatus('done')
     } catch (err) {
-      const msg = err.response?.data?.error || err.message || 'Analysis failed'
-      setError(msg)
+      setError(friendly('the report analysis not completing'))
       setStatus('failed')
     }
   }
@@ -49,7 +49,7 @@ export function useAnalysis(reportId) {
       }
     } catch {
       stopPolling()
-      setError('Failed to load analysis')
+      setError(friendly('the report analysis not loading'))
       setLoading(false)
     }
   }

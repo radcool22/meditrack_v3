@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
+import { friendly } from '../utils/friendlyError'
 
 export function useCombinedChat() {
   const { token } = useAuth()
@@ -32,7 +33,7 @@ export function useCombinedChat() {
         ])
         return data.reply
       } catch (err) {
-        setError(err.response?.data?.error || 'Failed to send message')
+        setError(friendly('your message not being sent'))
         setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
         return null
       } finally {

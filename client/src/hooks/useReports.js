@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
+import { friendly } from '../utils/friendlyError'
 
 export function useReports() {
   const { token } = useAuth()
@@ -17,7 +18,7 @@ export function useReports() {
       const { data } = await axios.get('/api/reports', { headers: authHeaders })
       setReports(data.reports)
     } catch {
-      setError('Failed to load reports')
+      setError(friendly('your reports not loading'))
     } finally {
       setLoading(false)
     }
