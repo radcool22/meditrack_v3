@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import logo from '../assets/logo.svg'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +21,7 @@ export default function LoginPage() {
 
   const [mode, setMode] = useState('login') // 'login' | 'signup'
   const [countryCode, setCountryCode] = useState('+91')
+  const countryCodeRef = useRef('+91')
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [step, setStep] = useState('phone') // 'phone' | 'otp'
@@ -49,7 +50,7 @@ export default function LoginPage() {
     }
     setLoading(true)
     try {
-      await axios.post('/api/auth/send-otp', { phone_number: `${countryCode}${phone}`, mode })
+      await axios.post('/api/auth/send-otp', { phone_number: `${countryCodeRef.current}${phone}`, mode })
       setStep('otp')
     } catch (err) {
       const data = err.response?.data
@@ -68,7 +69,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { data } = await axios.post('/api/auth/verify-otp', {
-        phone_number: `${countryCode}${phone}`,
+        phone_number: `${countryCodeRef.current}${phone}`,
         otp_code: otp,
       })
       login(data.token, data.user)
@@ -157,15 +158,20 @@ export default function LoginPage() {
                 {t('phone_label')}
               </label>
               <div className="flex items-stretch border-2 border-ink-200 rounded-xl overflow-hidden focus-within:border-accent-500 transition-colors">
-                <select
-                  value={countryCode}
-                  onChange={(e) => { setCountryCode(e.target.value); setPhone('') }}
-                  className="bg-white text-ink-900 text-[17px] font-bold px-3 py-4 border-r-2 border-ink-200 outline-none shrink-0 cursor-pointer appearance-none"
-                >
-                  {COUNTRY_CODES.map(c => (
-                    <option key={c.code} value={c.code}>{c.label}</option>
-                  ))}
-                </select>
+                <div className="relative shrink-0 border-r-2 border-ink-200">
+                  <select
+                    value={countryCode}
+                    onChange={(e) => { countryCodeRef.current = e.target.value; setCountryCode(e.target.value); setPhone('') }}
+                    className="bg-white text-ink-900 text-[17px] font-bold pl-3 pr-7 py-4 outline-none cursor-pointer appearance-none h-full"
+                  >
+                    {COUNTRY_CODES.map(c => (
+                      <option key={c.code} value={c.code}>{c.label}</option>
+                    ))}
+                  </select>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-400">
+                    <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+                  </svg>
+                </div>
                 <input
                   type="tel"
                   inputMode="numeric"
