@@ -10,8 +10,8 @@ const USA_RE   = /^\d{10}$/
 const DEV_TEST_PHONE = '0000000000'
 
 const COUNTRY_CODES = [
-  { code: '+91', label: '+91', maxLen: 10, validate: (p) => INDIA_RE.test(p) },
-  { code: '+1',  label: '+1',  maxLen: 10, validate: (p) => USA_RE.test(p) },
+  { code: '+91', label: '+91', name: 'Indian', maxLen: 10, validate: (p) => INDIA_RE.test(p) },
+  { code: '+1',  label: '+1',  name: 'US',     maxLen: 10, validate: (p) => USA_RE.test(p) },
 ]
 
 export default function LoginPage() {
@@ -21,7 +21,6 @@ export default function LoginPage() {
 
   const [mode, setMode] = useState('login') // 'login' | 'signup'
   const [countryCode, setCountryCode] = useState('+91')
-  const countryCodeRef = useRef('+91')
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [step, setStep] = useState('phone') // 'phone' | 'otp'
@@ -34,29 +33,47 @@ export default function LoginPage() {
   const [nameError, setNameError] = useState('')
   const [savedToken, setSavedToken] = useState(null)
 
-  const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) ?? COUNTRY_CODES[0]
+  // DOM ref on the <select> — always the true current value, no closure/timing issues
+  const selectRef = useRef(null)
+  // Stores the full number (code + digits) the moment OTP is sent; reused for verify & resend
+  const fullPhoneRef = useRef('')
 
-  function isValidPhone(p) {
-    if (p === DEV_TEST_PHONE) return true
-    return selectedCountry.validate(p)
-  }
+  const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) ?? COUNTRY_CODES[0]
 
   async function handleSendOtp(e) {
     e.preventDefault()
     setError('')
-    if (!isValidPhone(phone)) {
-      setError(t('invalid_phone'))
+    // Read directly from DOM — immune to React re-render timing
+    const code = selectRef.current ? selectRef.current.value : countryCode
+    const country = COUNTRY_CODES.find(c => c.code === code) ?? COUNTRY_CODES[0]
+    if (phone !== DEV_TEST_PHONE && !country.validate(phone)) {
+      setError(`Enter a valid ${country.name} phone number`)
       return
     }
+    const fullNumber = `${code}${phone}`
+    fullPhoneRef.current = fullNumber   // lock in the number for verify & resend
     setLoading(true)
     try {
-      await axios.post('/api/auth/send-otp', { phone_number: `${countryCodeRef.current}${phone}`, mode })
+      await axios.post('/api/auth/send-otp', { phone_number: fullNumber, mode })
       setStep('otp')
     } catch (err) {
       const data = err.response?.data
       if (data?.hint === 'login') setMode('login')
       if (data?.hint === 'signup') setMode('signup')
       setError(data?.error || t('error_generic'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleResendOtp() {
+    if (!fullPhoneRef.current) return
+    setLoading(true)
+    setError('')
+    try {
+      await axios.post('/api/auth/send-otp', { phone_number: fullPhoneRef.current, mode })
+    } catch (err) {
+      setError(err.response?.data?.error || t('error_generic'))
     } finally {
       setLoading(false)
     }
@@ -69,7 +86,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { data } = await axios.post('/api/auth/verify-otp', {
-        phone_number: `${countryCodeRef.current}${phone}`,
+        phone_number: fullPhoneRef.current,   // always the number that received the OTP
         otp_code: otp,
       })
       login(data.token, data.user)
@@ -160,8 +177,9 @@ export default function LoginPage() {
               <div className="flex items-stretch border-2 border-ink-200 rounded-xl overflow-hidden focus-within:border-accent-500 transition-colors">
                 <div className="relative shrink-0 border-r-2 border-ink-200">
                   <select
+                    ref={selectRef}
                     value={countryCode}
-                    onChange={(e) => { countryCodeRef.current = e.target.value; setCountryCode(e.target.value); setPhone('') }}
+                    onChange={(e) => { setCountryCode(e.target.value); setPhone('') }}
                     className="bg-white text-ink-900 text-[17px] font-bold pl-3 pr-7 py-4 outline-none cursor-pointer appearance-none h-full"
                   >
                     {COUNTRY_CODES.map(c => (
@@ -229,7 +247,7 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={handleSendOtp}
+                onClick={handleResendOtp}
                 disabled={loading}
                 className="hover:text-ink-900 font-medium disabled:opacity-40 transition-colors"
               >
