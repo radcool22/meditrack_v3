@@ -12,7 +12,7 @@
   "verify_otp": "Verify & Login",
   "verifying": "Verifying...",
   "resend_otp": "Resend OTP",
-  "otp_sent": "OTP sent to +91{{phone}}",
+  "otp_sent": "OTP sent to {{phone}}",
   "change_number": "Change number",
   "invalid_phone": "Enter a valid 10-digit Indian mobile number",
   "invalid_otp": "Enter the 6-digit OTP",

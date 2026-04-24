@@ -12,7 +12,7 @@
   "verify_otp": "सत्यापित करें और लॉगिन करें",
   "verifying": "सत्यापित हो रहा है...",
   "resend_otp": "OTP दोबारा भेजें",
-  "otp_sent": "+91{{phone}} पर OTP भेजा गया",
+  "otp_sent": "{{phone}} पर OTP भेजा गया",
   "change_number": "नंबर बदलें",
   "invalid_phone": "सही 10 अंकों का भारतीय मोबाइल नंबर दर्ज करें",
   "invalid_otp": "6 अंकों का OTP दर्ज करें",

@@ -213,7 +213,7 @@ export default function LoginPage() {
 
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-5">
-            <p className="text-[15px] text-ink-400 font-medium">{t('otp_sent', { phone })}</p>
+            <p className="text-[15px] text-ink-400 font-medium">{t('otp_sent', { phone: fullPhoneRef.current })}</p>
             <div>
               <label className="block text-[13px] font-semibold text-ink-600 uppercase tracking-widest mb-2">
                 {t('otp_label')}
