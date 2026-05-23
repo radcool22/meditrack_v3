@@ -16,7 +16,7 @@ import chatRouter from './routes/chat.js'
 import { handleTtsConnection } from './services/elevenLabsTts.js'
 
 const app = express()
-const PORT = process.env.PORT || 5001
+const PORT = process.env.PORT || 8080
 
 app.use(cors())
 app.use(express.json())
