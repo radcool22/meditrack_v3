@@ -56,7 +56,7 @@ export async function getReports(req, res) {
 
   const { data: reports, error } = await supabase
     .from('reports')
-    .select('id, file_name, file_url, file_type, status, uploaded_at, report_date, report_title')
+    .select('id, file_name, file_url, file_type, status, uploaded_at, report_date, report_title, video_status, video_url')
     .eq('user_id', userId)
     .order('uploaded_at', { ascending: false })
 

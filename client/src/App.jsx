@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import ReportPage from './pages/ReportPage'
 import ElevenLabsTest from './pages/ElevenLabsTest'
 import HealthSidebar from './components/HealthSidebar'
+import CalculatorsPage from './pages/CalculatorsPage'
 import './utils/i18n.js'
 
 function AppShell() {
@@ -31,6 +32,14 @@ function AppShell() {
           element={
             <ProtectedRoute>
               <ReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/calculators"
+          element={
+            <ProtectedRoute>
+              <CalculatorsPage />
             </ProtectedRoute>
           }
         />
