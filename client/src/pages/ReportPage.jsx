@@ -101,13 +101,18 @@ export default function ReportPage() {
   const { language } = useLanguage()
   const { analysis, reportTitle, reportDate, status, loading, error, retry } = useAnalysis(id)
   const { connect, speak } = useVoice()
-  const { videoStatus, videoUrl, notifyGenerating } = useVideoStatus(id)
+  const { videoStatus, videoUrl, notifyGenerating, cancel } = useVideoStatus(id)
   const hasSpoken = useRef(false)
 
   const [ageModalOpen, setAgeModalOpen] = useState(false)
+  const [generateAttempts, setGenerateAttempts] = useState(0)
+
+  const attemptsExhausted = generateAttempts >= 3
 
   async function handleAgeConfirm(ageYears) {
     setAgeModalOpen(false)
+    if (attemptsExhausted) return
+    setGenerateAttempts((n) => n + 1)
     try {
       await axios.post(
         `/api/reports/${id}/generate-video`,
@@ -206,20 +211,38 @@ export default function ReportPage() {
                 </div>
               )}
 
+              {/* Cancel button — only while generating */}
+              {videoStatus === 'generating' && (
+                <button
+                  onClick={cancel}
+                  className="mt-3 w-full max-w-[360px] mx-auto flex items-center justify-center py-3 rounded-xl border-2 border-red-400 text-red-500 font-semibold text-[15px] hover:bg-red-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+
               {/* Real video when ready */}
               {videoStatus === 'ready' && <VideoPlayer src={videoUrl} />}
 
               {/* Generate Video button — only when none */}
               {videoStatus === 'none' && (
-                <button
-                  onClick={() => setAgeModalOpen(true)}
-                  className="mt-4 w-full max-w-[360px] mx-auto flex items-center justify-center gap-2 bg-accent-500 hover:bg-accent-600 text-white font-semibold text-[15px] py-3.5 rounded-xl transition-colors shadow-sm"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 shrink-0">
-                    <path d="M3.25 4A2.25 2.25 0 001 6.25v7.5A2.25 2.25 0 003.25 16h7.5A2.25 2.25 0 0013 13.75v-7.5A2.25 2.25 0 0010.75 4h-7.5zM19 4.75a.75.75 0 00-1.28-.53l-3 3a.75.75 0 00-.22.53v4.5c0 .199.079.39.22.53l3 3a.75.75 0 001.28-.53V4.75z" />
-                  </svg>
-                  Generate Video
-                </button>
+                <>
+                  <button
+                    onClick={() => !attemptsExhausted && setAgeModalOpen(true)}
+                    disabled={attemptsExhausted}
+                    className="mt-4 w-full max-w-[360px] mx-auto flex items-center justify-center gap-2 bg-accent-500 hover:bg-accent-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-[15px] py-3.5 rounded-xl transition-colors shadow-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 shrink-0">
+                      <path d="M3.25 4A2.25 2.25 0 001 6.25v7.5A2.25 2.25 0 003.25 16h7.5A2.25 2.25 0 0013 13.75v-7.5A2.25 2.25 0 0010.75 4h-7.5zM19 4.75a.75.75 0 00-1.28-.53l-3 3a.75.75 0 00-.22.53v4.5c0 .199.079.39.22.53l3 3a.75.75 0 001.28-.53V4.75z" />
+                    </svg>
+                    Generate Video
+                  </button>
+                  {attemptsExhausted && (
+                    <p className="mt-2 text-center text-[13px] text-ink-400 max-w-[360px] mx-auto">
+                      Too many attempts. Please try again later.
+                    </p>
+                  )}
+                </>
               )}
             </section>
 

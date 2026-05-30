@@ -93,6 +93,40 @@ export async function generateVideo(req, res) {
   return res.json({ jobId, videoStatus: 'generating' })
 }
 
+export async function cancelVideo(req, res) {
+  const { id } = req.params
+  const { userId } = req.user
+
+  const { data: report, error: reportErr } = await supabase
+    .from('reports')
+    .select('id, user_id')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (reportErr || !report) {
+    return res.status(404).json({ error: 'Report not found' })
+  }
+
+  const { error: updateErr } = await supabase
+    .from('reports')
+    .update({
+      video_status:       'none',
+      video_job_id:       null,
+      video_url:          null,
+      video_error:        null,
+      video_requested_at: null,
+    })
+    .eq('id', id)
+
+  if (updateErr) {
+    console.error('Cancel video error:', updateErr.message)
+    return res.status(500).json({ error: 'Failed to cancel video' })
+  }
+
+  return res.json({ cancelled: true })
+}
+
 export async function getVideoStatus(req, res) {
   const { id } = req.params
   const { userId } = req.user

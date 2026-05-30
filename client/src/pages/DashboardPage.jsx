@@ -34,6 +34,8 @@ export default function DashboardPage() {
   const [confirmReport, setConfirmReport] = useState(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [playVideoReportId, setPlayVideoReportId] = useState(null)
+  // Per-report generate attempt counter — reset on page refresh
+  const [generateAttempts, setGenerateAttempts] = useState({})
 
   const { videoStatus, videoUrl } = useVideoStatus(activeVideoReportId)
 
@@ -81,6 +83,8 @@ export default function DashboardPage() {
   async function handleAgeConfirm(ageYears) {
     const report = confirmReport
     setConfirmReport(null)
+    if ((generateAttempts[report.id] ?? 0) >= 3) return
+    setGenerateAttempts((prev) => ({ ...prev, [report.id]: (prev[report.id] ?? 0) + 1 }))
     // Optimistic: show generating immediately
     setLocalVideoStates((prev) => ({ ...prev, [report.id]: { status: 'generating', url: null } }))
     try {

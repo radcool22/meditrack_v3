@@ -75,6 +75,18 @@ export function useVideoStatus(reportId) {
     setVideoStatus('generating')
   }
 
+  async function cancel() {
+    stopPolling()
+    setVideoStatus('none')
+    setVideoUrl(null)
+    setVideoError(null)
+    try {
+      await axios.delete(`/api/reports/${reportId}/video`, { headers })
+    } catch (err) {
+      console.error('Cancel video error:', err.message)
+    }
+  }
+
   // Called by the page when it already knows the initial status from a parent data
   // load (e.g. the reports list on DashboardPage). Jumps straight to that status
   // without waiting for the mount fetchStatus() to complete — if the status is
@@ -85,5 +97,5 @@ export function useVideoStatus(reportId) {
     setVideoError(null)
   }
 
-  return { videoStatus, videoUrl, videoError, notifyGenerating, startPolling }
+  return { videoStatus, videoUrl, videoError, notifyGenerating, startPolling, cancel }
 }

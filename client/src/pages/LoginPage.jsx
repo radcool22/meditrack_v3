@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import logo from '../assets/logo.svg'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -16,8 +16,23 @@ const COUNTRY_CODES = [
 
 export default function LoginPage() {
   const { t } = useTranslation()
-  const { login, updateUser, token } = useAuth()
+  const { login, updateUser, loading } = useAuth()
   const navigate = useNavigate()
+
+  // Redirect to dashboard if a valid (non-expired) token is already stored
+  useEffect(() => {
+    if (loading) return
+    const stored = localStorage.getItem('mt_token')
+    if (!stored) return
+    try {
+      const payload = JSON.parse(atob(stored.split('.')[1]))
+      if (payload.exp * 1000 > Date.now()) {
+        navigate('/dashboard', { replace: true })
+      }
+    } catch {
+      // Malformed token — stay on login page
+    }
+  }, [loading])
 
   const [mode, setMode] = useState('login') // 'login' | 'signup'
   const [countryCode, setCountryCode] = useState('+91')

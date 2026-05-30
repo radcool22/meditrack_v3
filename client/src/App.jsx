@@ -10,6 +10,14 @@ import HealthSidebar from './components/HealthSidebar'
 import CalculatorsPage from './pages/CalculatorsPage'
 import './utils/i18n.js'
 
+// Redirects authenticated users away from public-only routes (e.g. /login)
+function PublicRoute({ children }) {
+  const { token, loading } = useAuth()
+  if (loading) return null
+  if (token) return <Navigate to="/dashboard" replace />
+  return children
+}
+
 function AppShell() {
   const { token } = useAuth()
   const { pathname } = useLocation()
@@ -18,7 +26,8 @@ function AppShell() {
   return (
     <>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<Navigate to={token ? '/dashboard' : '/login'} replace />} />
+        <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route
           path="/dashboard"
           element={
