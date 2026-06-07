@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import ReportPage from './pages/ReportPage'
 import ElevenLabsTest from './pages/ElevenLabsTest'
 import HealthSidebar from './components/HealthSidebar'
+import VideoProgressCard from './components/VideoProgressCard'
 import CalculatorsPage from './pages/CalculatorsPage'
 import './utils/i18n.js'
 
@@ -56,6 +57,7 @@ function AppShell() {
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
       {showSidebar && <HealthSidebar />}
+      {token && <VideoProgressCard />}
     </>
   )
 }

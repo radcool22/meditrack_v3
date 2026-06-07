@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import logo from '../assets/logo.svg'
 import { useTranslation } from 'react-i18next'
@@ -9,9 +9,7 @@ import UploadZone from '../components/UploadZone'
 import ReportCard from '../components/ReportCard'
 import ChatPanel from '../components/ChatPanel'
 import LangToggle from '../components/LangToggle'
-import BottomNav from '../components/BottomNav'
 import VideoPlayer from '../components/VideoPlayer'
-import AgeModal from '../components/AgeModal'
 
 function formatReportDate(report) {
   if (report.report_date) {
@@ -31,13 +29,16 @@ export default function DashboardPage() {
   const [activeVideoReportId, setActiveVideoReportId] = useState(null)
   // Local overrides: { [reportId]: { status, url } } — takes precedence over DB state
   const [localVideoStates, setLocalVideoStates] = useState({})
-  const [confirmReport, setConfirmReport] = useState(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [playVideoReportId, setPlayVideoReportId] = useState(null)
   // Per-report generate attempt counter — reset on page refresh
   const [generateAttempts, setGenerateAttempts] = useState({})
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadingReportId, setUploadingReportId] = useState(null)
 
-  const { videoStatus, videoUrl } = useVideoStatus(activeVideoReportId)
+  const reportsRef = useRef(null)
+
+  const { videoStatus, videoUrl, notifyGenerating } = useVideoStatus(activeVideoReportId)
 
   const hasDoneReports = reports.some((r) => r.status === 'done')
   const doneReports = reports.filter((r) => r.status === 'done')
@@ -69,34 +70,38 @@ export default function DashboardPage() {
     })
   }, [reports])
 
+  // Reset upload progress bar once the newly uploaded report finishes processing
+  useEffect(() => {
+    if (!uploadingReportId) return
+    const r = reports.find((r) => r.id === uploadingReportId)
+    if (r?.status === 'done' || r?.status === 'failed') {
+      setUploadProgress(0)
+      setUploadingReportId(null)
+    }
+  }, [reports, uploadingReportId])
+
   // Effective video state per report: local override > DB state
   function getEffectiveVideo(report) {
     if (localVideoStates[report.id]) return localVideoStates[report.id]
     return { status: report.video_status ?? 'none', url: report.video_url ?? null }
   }
 
-  function handlePickerSelect(report) {
+  async function handlePickerSelect(report) {
     setPickerOpen(false)
-    setConfirmReport(report)
-  }
-
-  async function handleAgeConfirm(ageYears) {
-    const report = confirmReport
-    setConfirmReport(null)
     if ((generateAttempts[report.id] ?? 0) >= 3) return
     setGenerateAttempts((prev) => ({ ...prev, [report.id]: (prev[report.id] ?? 0) + 1 }))
-    // Optimistic: show generating immediately
     setLocalVideoStates((prev) => ({ ...prev, [report.id]: { status: 'generating', url: null } }))
     try {
       await axios.post(
         `/api/reports/${report.id}/generate-video`,
-        { ageYears },
+        { ageYears: 25 },
         { headers: { Authorization: `Bearer ${token}` } },
       )
       setActiveVideoReportId(report.id)
+      notifyGenerating()
+      reportsRef.current?.scrollIntoView({ behavior: 'smooth' })
     } catch (err) {
       console.error('Generate video failed:', err)
-      // Revert optimistic state — Session 3 adds error UI
       setLocalVideoStates((prev) => { const n = { ...prev }; delete n[report.id]; return n })
     }
   }
@@ -109,7 +114,7 @@ export default function DashboardPage() {
   })()
 
   return (
-    <div className="min-h-screen bg-surface font-sans pb-28 lg:pb-0">
+    <div className="min-h-screen bg-surface font-sans">
 
       {/* ── Top navbar ─────────────────────────────────────────── */}
       <header className="bg-card border-b border-ink-200/60 px-5 py-4 flex items-center justify-between sticky top-0 z-10">
@@ -143,7 +148,34 @@ export default function DashboardPage() {
           <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-4">
             {t('upload_report_section')}
           </h2>
-          <UploadZone onUpload={upload} />
+          <UploadZone onUpload={async (file) => {
+            setUploadProgress(1)
+            try {
+              const report = await upload(file, setUploadProgress)
+              setUploadingReportId(report.id)
+              reportsRef.current?.scrollIntoView({ behavior: 'smooth' })
+            } catch {
+              setUploadProgress(0)
+            }
+          }} />
+          {uploadProgress > 0 && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[13px] font-medium text-ink-400">
+                  {uploadProgress === 100 ? 'Processing...' : 'Uploading...'}
+                </span>
+                <span className="text-[13px] font-semibold" style={{ color: 'rgb(52,120,247)' }}>
+                  {uploadProgress}%
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-ink-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-150"
+                  style={{ width: `${uploadProgress}%`, background: 'rgb(52,120,247)' }}
+                />
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ── Generate Video card ─────────────────────────────── */}
@@ -188,7 +220,7 @@ export default function DashboardPage() {
         </section>
 
         {/* ── Your Reports ─────────────────────────────────────── */}
-        <section>
+        <section ref={reportsRef}>
           <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-4">
             {t('your_reports')}
           </h2>
@@ -228,15 +260,6 @@ export default function DashboardPage() {
         </a>
       </footer>
 
-      <BottomNav onUploadClick={() => document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' })} />
-
-      {/* ── Age modal (confirm + age collection) ──────────────── */}
-      <AgeModal
-        open={!!confirmReport}
-        reportTitle={confirmReport?.report_title ?? confirmReport?.file_name ?? null}
-        onConfirm={handleAgeConfirm}
-        onClose={() => setConfirmReport(null)}
-      />
 
       {/* ── Report picker modal ────────────────────────────────── */}
       {pickerOpen && (

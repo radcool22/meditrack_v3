@@ -51,7 +51,8 @@ export function useVideoStatus(reportId) {
   // below will call beginPolling() automatically on the next render.
   useEffect(() => {
     if (!reportId || !token) return
-    setVideoStatus('none')
+    // Preserve 'generating' if notifyGenerating() was already called optimistically
+    setVideoStatus((prev) => prev === 'generating' ? prev : 'none')
     setVideoUrl(null)
     setVideoError(null)
     stopPolling()

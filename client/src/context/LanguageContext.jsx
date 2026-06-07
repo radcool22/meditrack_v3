@@ -5,7 +5,7 @@ const LanguageContext = createContext(null)
 export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState(() => {
     // Persists voice language preference across refresh
-    return localStorage.getItem('mt_lang') || 'en'
+    return localStorage.getItem('mt_lang') || 'hi'
   })
 
   function switchLanguage(lang) {

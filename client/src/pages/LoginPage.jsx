@@ -16,12 +16,12 @@ const COUNTRY_CODES = [
 
 export default function LoginPage() {
   const { t } = useTranslation()
-  const { login, updateUser, loading } = useAuth()
+  const { login, updateUser, token, loading: authLoading } = useAuth()
   const navigate = useNavigate()
 
   // Redirect to dashboard if a valid (non-expired) token is already stored
   useEffect(() => {
-    if (loading) return
+    if (authLoading) return
     const stored = localStorage.getItem('mt_token')
     if (!stored) return
     try {
@@ -32,9 +32,9 @@ export default function LoginPage() {
     } catch {
       // Malformed token — stay on login page
     }
-  }, [loading])
+  }, [authLoading])
 
-  const [mode, setMode] = useState('login') // 'login' | 'signup'
+  const [mode, setMode] = useState('signup') // 'login' | 'signup'
   const [countryCode, setCountryCode] = useState('+91')
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
@@ -164,21 +164,21 @@ export default function LoginPage() {
           <div className="flex bg-ink-200/40 rounded-xl p-1 mb-6">
             <button
               type="button"
-              onClick={() => { setMode('login'); setError('') }}
-              className={`flex-1 text-[15px] font-semibold py-2.5 rounded-lg transition-all ${
-                mode === 'login' ? 'bg-card text-ink-900 shadow-sm' : 'text-ink-400 hover:text-ink-900'
-              }`}
-            >
-              {t('log_in')}
-            </button>
-            <button
-              type="button"
               onClick={() => { setMode('signup'); setError('') }}
               className={`flex-1 text-[15px] font-semibold py-2.5 rounded-lg transition-all ${
                 mode === 'signup' ? 'bg-card text-ink-900 shadow-sm' : 'text-ink-400 hover:text-ink-900'
               }`}
             >
               {t('sign_up')}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('login'); setError('') }}
+              className={`flex-1 text-[15px] font-semibold py-2.5 rounded-lg transition-all ${
+                mode === 'login' ? 'bg-card text-ink-900 shadow-sm' : 'text-ink-400 hover:text-ink-900'
+              }`}
+            >
+              {t('log_in')}
             </button>
           </div>
         )}

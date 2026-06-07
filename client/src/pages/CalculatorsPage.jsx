@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import BottomNav from '../components/BottomNav'
 
 // ── Shared field ─────────────────────────────────────────────
 function Field({ label, value, onChange, placeholder, type = 'number' }) {
@@ -257,7 +256,7 @@ export default function CalculatorsPage() {
   const toggle = (id) => setOpen((prev) => (prev === id ? null : id))
 
   return (
-    <div className="min-h-screen bg-surface font-sans pb-28">
+    <div className="min-h-screen bg-surface font-sans">
       <header className="bg-card border-b border-ink-200/60 px-5 pt-14 pb-5 sticky top-0 z-10">
         <h1 className="text-[28px] font-extrabold text-ink-900 tracking-tight leading-tight">
           {t('health_tools')}
@@ -291,7 +290,6 @@ export default function CalculatorsPage() {
         </CalcCard>
       </main>
 
-      <BottomNav />
     </div>
   )
 }
