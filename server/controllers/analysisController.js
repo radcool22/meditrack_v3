@@ -20,6 +20,43 @@ async function runGptAnalysis(prompt) {
   return JSON.parse(completion.choices[0].message.content)
 }
 
+export async function runAnalysisPipeline(reportId, fileType, fileUrl, buffer = null) {
+  const fileBuffer = buffer ?? await fetchBuffer(fileUrl)
+  const rawText    = await extractText(fileBuffer, fileType)
+
+  await supabase.from('reports').update({ ocr_raw_text: rawText }).eq('id', reportId)
+
+  const parsed = await runGptAnalysis(buildStructureAndAnalysePrompt(rawText, 'en'))
+  const { structured_data: structuredRaw, analysis: enAnalysis } = parsed
+
+  const reportDate  = structuredRaw?.report_date ?? null
+  const reportTitle = enAnalysis.report_title ?? null
+  const testsArray  = Array.isArray(structuredRaw?.tests) ? structuredRaw.tests
+                    : Array.isArray(structuredRaw) ? structuredRaw
+                    : []
+
+  await supabase
+    .from('reports')
+    .update({ structured_data: testsArray, report_date: reportDate, report_title: reportTitle, status: 'done' })
+    .eq('id', reportId)
+
+  const { data: analysisRow, error: analysisErr } = await supabase
+    .from('report_analyses')
+    .insert({
+      report_id:       reportId,
+      summary:         enAnalysis.summary,
+      abnormal_values: enAnalysis.abnormal_values,
+      suggestions:     enAnalysis.suggestions,
+      language:        'en',
+    })
+    .select()
+    .single()
+
+  if (analysisErr) throw new Error(`Analysis insert failed: ${analysisErr.message}`)
+
+  return { analysis: analysisRow, report_title: reportTitle, report_date: reportDate }
+}
+
 export async function runAnalysis(req, res) {
   const { reportId } = req.params
   const { userId } = req.user
@@ -67,59 +104,11 @@ export async function runAnalysis(req, res) {
     .eq('id', reportId)
 
   try {
-    // 3. Download file and run OCR
-    const buffer = await fetchBuffer(report.file_url)
-    const rawText = await extractText(buffer, report.file_type)
-
-    // 4. Save raw OCR text
-    await supabase
-      .from('reports')
-      .update({ ocr_raw_text: rawText })
-      .eq('id', reportId)
-
-    // 5. GPT call — English: structure + analyse
-    const parsed = await runGptAnalysis(buildStructureAndAnalysePrompt(rawText, 'en'))
-    const { structured_data: structuredRaw, analysis: enAnalysis } = parsed
-
-    // Extract report_date, report_title and tests array
-    const reportDate  = structuredRaw?.report_date ?? null
-    const reportTitle = enAnalysis.report_title ?? null
-    const testsArray  = Array.isArray(structuredRaw?.tests) ? structuredRaw.tests
-                      : Array.isArray(structuredRaw) ? structuredRaw
-                      : []
-    const structured_data = testsArray
-
-    // 6. Save structured data + report_date + report_title + mark done
-    await supabase
-      .from('reports')
-      .update({ structured_data, report_date: reportDate, report_title: reportTitle, status: 'done' })
-      .eq('id', reportId)
-
-    // 7. Insert analysis row (English only)
-    const { data: analysisRow, error: analysisErr } = await supabase
-      .from('report_analyses')
-      .insert({
-        report_id:       reportId,
-        summary:         enAnalysis.summary,
-        abnormal_values: enAnalysis.abnormal_values,
-        suggestions:     enAnalysis.suggestions,
-        language:        'en',
-      })
-      .select()
-      .single()
-
-    if (analysisErr) {
-      console.error('Analysis insert error:', analysisErr.message)
-      return res.status(500).json({ error: 'Failed to save analysis' })
-    }
-
-    return res.json({ analysis: analysisRow, report_title: reportTitle, report_date: reportDate })
+    const result = await runAnalysisPipeline(reportId, report.file_type, report.file_url)
+    return res.json(result)
   } catch (err) {
     console.error('Pipeline error:', err.message)
-    await supabase
-      .from('reports')
-      .update({ status: 'failed' })
-      .eq('id', reportId)
+    await supabase.from('reports').update({ status: 'failed' }).eq('id', reportId)
     return res.status(500).json({ error: err.message })
   }
 }

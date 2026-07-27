@@ -60,12 +60,7 @@ export async function sendMessage(req, res) {
   return res.json({ reply })
 }
 
-export async function sendCombinedMessage(req, res) {
-  const { userId } = req.user
-  const { message, history = [] } = req.body
-
-  if (!message?.trim()) return res.status(400).json({ error: 'Message is required' })
-
+export async function generateCombinedChatReply(userId, userMessage, history = []) {
   // Load all done reports + user name in parallel
   // Order by report_date (the date on the document) ascending — nulls last via uploaded_at
   const [{ data: reports }, { data: userRow }] = await Promise.all([
@@ -94,7 +89,7 @@ export async function sendCombinedMessage(req, res) {
   const messages = [
     { role: 'system', content: systemPrompt },
     ...history.map((m) => ({ role: m.role, content: m.content })),
-    { role: 'user', content: message.trim() },
+    { role: 'user', content: userMessage.trim() },
   ]
 
   const completion = await openai.chat.completions.create({
@@ -104,7 +99,17 @@ export async function sendCombinedMessage(req, res) {
     max_tokens: 500,
   })
 
-  return res.json({ reply: completion.choices[0].message.content })
+  return completion.choices[0].message.content
+}
+
+export async function sendCombinedMessage(req, res) {
+  const { userId } = req.user
+  const { message, history = [] } = req.body
+
+  if (!message?.trim()) return res.status(400).json({ error: 'Message is required' })
+
+  const reply = await generateCombinedChatReply(userId, message, history)
+  return res.json({ reply })
 }
 
 export async function getHistory(req, res) {

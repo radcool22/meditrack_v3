@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import VideoModal from './VideoModal'
-import axios from 'axios'
+import axios from '../utils/axios'
 
 const STAGES = [
   'Reading your report',

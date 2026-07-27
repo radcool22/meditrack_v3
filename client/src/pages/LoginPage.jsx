@@ -3,7 +3,7 @@ import logo from '../assets/logo.svg'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
-import axios from 'axios'
+import axios from '../utils/axios'
 
 const INDIA_RE = /^[6-9]\d{9}$/
 const USA_RE   = /^\d{10}$/

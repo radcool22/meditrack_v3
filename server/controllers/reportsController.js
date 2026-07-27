@@ -6,66 +6,116 @@ const MIME_TO_TYPE = {
   'application/pdf': 'pdf',
 }
 
-export async function uploadReport(req, res) {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file provided' })
-  }
-
-  const { userId } = req.user
-  const { originalname, mimetype, buffer } = req.file
-  const fileType = MIME_TO_TYPE[mimetype]
-  const storagePath = `${userId}/${Date.now()}-${originalname}`
+export async function storeReportFile(userId, buffer, mimeType, fileName) {
+  const fileType    = MIME_TO_TYPE[mimeType]
+  const storagePath = `${userId}/${Date.now()}-${fileName}`
 
   const { error: storageError } = await supabase.storage
     .from(process.env.SUPABASE_STORAGE_BUCKET)
-    .upload(storagePath, buffer, { contentType: mimetype })
+    .upload(storagePath, buffer, { contentType: mimeType })
 
-  if (storageError) {
-    console.error('Storage upload error:', storageError.message)
-    return res.status(500).json({ error: 'Failed to upload file' })
-  }
+  if (storageError) throw new Error(`Storage upload failed: ${storageError.message}`)
 
   const { data: urlData } = supabase.storage
     .from(process.env.SUPABASE_STORAGE_BUCKET)
     .getPublicUrl(storagePath)
 
-  const fileUrl = urlData.publicUrl
-
   const { data: report, error: dbError } = await supabase
     .from('reports')
     .insert({
       user_id:   userId,
-      file_name: originalname,
-      file_url:  fileUrl,
+      file_name: fileName,
+      file_url:  urlData.publicUrl,
       file_type: fileType,
       status:    'pending',
     })
     .select('id, file_name, file_url, file_type, status, uploaded_at, report_date, report_title')
     .single()
 
-  if (dbError) {
-    console.error('DB insert error:', dbError.message)
-    return res.status(500).json({ error: 'Failed to save report metadata' })
-  }
+  if (dbError) throw new Error(`DB insert failed: ${dbError.message}`)
 
-  return res.status(201).json({ report })
+  return report
 }
 
-export async function getReports(req, res) {
+export async function uploadReport(req, res) {
+  if (!req.file) return res.status(400).json({ error: 'No file provided' })
+
   const { userId } = req.user
+  const { originalname, mimetype, buffer } = req.file
 
-  const { data: reports, error } = await supabase
-    .from('reports')
-    .select('id, file_name, file_url, file_type, status, uploaded_at, report_date, report_title, video_status, video_url')
-    .eq('user_id', userId)
-    .order('uploaded_at', { ascending: false })
+  try {
+    const report = await storeReportFile(userId, buffer, mimetype, originalname)
+    return res.status(201).json({ report })
+  } catch (err) {
+    console.error('Upload error:', err.message)
+    const msg = err.message.startsWith('Storage') ? 'Failed to upload file' : 'Failed to save report metadata'
+    return res.status(500).json({ error: msg })
+  }
+}
 
-  if (error) {
-    console.error('Get reports error:', error.message)
-    return res.status(500).json({ error: 'Failed to fetch reports' })
+const REPORTS_COLUMNS = [
+  'id', 'file_name', 'file_url', 'file_type', 'status',
+  'uploaded_at', 'report_date', 'report_title',
+  'video_status', 'video_url', 'video_job_id',
+  'video_requested_at', 'video_generated_at', 'video_error',
+].join(', ')
+
+export async function getReports(req, res) {
+  console.log('getReports called for userId:', req.user?.userId)
+  const { userId } = req.user
+  console.log('[getReports] called — userId:', userId)
+
+  async function querySupabase() {
+    return supabase
+      .from('reports')
+      .select(REPORTS_COLUMNS)
+      .eq('user_id', userId)
+      .order('uploaded_at', { ascending: false })
   }
 
-  return res.json({ reports })
+  try {
+    let { data, error } = await querySupabase()
+    console.log('Supabase response:', JSON.stringify(data), 'Error:', JSON.stringify(error))
+    console.log('[getReports] attempt 1 — error:', error?.message ?? 'none', '| rows:', data?.length ?? 'null')
+
+    if (error) {
+      console.warn('[getReports] first attempt failed, retrying after 500ms:', { message: error.message, details: error.details, hint: error.hint, code: error.code })
+      await new Promise((r) => setTimeout(r, 500))
+      ;({ data, error } = await querySupabase())
+      console.log('[getReports] attempt 2 — error:', error?.message ?? 'none', '| rows:', data?.length ?? 'null')
+    }
+
+    if (error) {
+      console.error('[getReports] both attempts failed — full error:', JSON.stringify(error))
+      return res.json({ reports: [] })
+    }
+
+    console.log('[getReports] raw response — row count:', data?.length ?? 0)
+
+    const reports = (data ?? [])
+      .filter((r) => {
+        if (!r || !r.id || !r.file_name) {
+          console.warn('[getReports] skipping malformed row:', JSON.stringify(r))
+          return false
+        }
+        return true
+      })
+      .map((r) => ({
+        ...r,
+        video_status:       r.video_status       ?? null,
+        video_url:          r.video_url          ?? null,
+        video_job_id:       r.video_job_id       ?? null,
+        video_requested_at: r.video_requested_at ?? null,
+        video_generated_at: r.video_generated_at ?? null,
+        video_error:        r.video_error        ?? null,
+      }))
+
+    console.log('[getReports] returning', reports.length, 'valid reports')
+    return res.json({ reports })
+  } catch (err) {
+    console.error('[getReports] unexpected exception:', err)
+    return res.json({ reports: [] })
+  }
 }
 
 export async function deleteReport(req, res) {

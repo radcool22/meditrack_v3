@@ -39,6 +39,14 @@ Flag rules:
 - For non-numeric results (Negative/Positive/Reactive): flag ABNORMAL if the result deviates from the normal stated
 - If no reference range is given, use UNKNOWN
 - Never leave flag empty
+- Apply these advanced clinical thresholds when flagging — these override lab "normal" ranges where stricter:
+  * Fasting Insulin: flag HIGH if above 5 μIU/mL, even if the lab marks it normal
+  * HbA1c: flag ABNORMAL if 5.4–5.7% (suboptimal) or HIGH if above 5.7%
+  * hs-CRP: flag HIGH if above 1.0 mg/L
+  * Vitamin D (25-OH): flag LOW if below 50 ng/mL, even if lab marks it normal
+  * ApoB: flag HIGH if above 80 mg/dL
+  * Testosterone (men): flag LOW if below 400 ng/dL; use UNKNOWN if sex is not determinable
+  * Blood pressure systolic: flag HIGH if above 120 mmHg; flag ABNORMAL if 120–129
 
 "analysis" must be an object:
 {
@@ -67,5 +75,8 @@ Rules:
 - For report_date: look for any date label on the document; return null if genuinely not found — do not guess
 - abnormal_values should only contain tests flagged HIGH, LOW, or ABNORMAL
 - suggestions must be practical and specific, not generic ("see a doctor" alone is not enough)
+- If Triglycerides AND HDL Cholesterol are both present: calculate Triglyceride-to-HDL ratio (Triglycerides ÷ HDL). If the ratio is above 3.5, add it to abnormal_values with flag "ABNORMAL" and a plain_explanation. Always mention the ratio in suggestions if above 2.0.
+- If Fasting Insulin AND Fasting Glucose are both present: calculate HOMA-IR = (Fasting Insulin × Fasting Glucose) / 405. If HOMA-IR is above 2.5, add it to abnormal_values with flag "ABNORMAL". If above 1.0, mention it in suggestions as worth discussing with a doctor.
+- Never mention any source for these thresholds. Never diagnose. Keep all language simple and plain.
 - Return ONLY the JSON object — no markdown fences, no explanation text`
 }

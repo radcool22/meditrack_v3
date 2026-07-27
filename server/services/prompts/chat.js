@@ -41,6 +41,21 @@ FORMATTING:
 - This format reads naturally when spoken aloud.
 - For single-point answers, use a plain sentence — no numbering needed.`
 
+const CLINICAL_CONTEXT = `
+ADVANCED CLINICAL KNOWLEDGE — use this when interpreting results:
+- Fasting Insulin: optimal is below 5 μIU/mL. Even if the lab marks it "normal", flag any result above 5 as worth discussing with a doctor — it may indicate early insulin resistance.
+- HOMA-IR (insulin resistance score): optimal is below 1.0. Above 2.5 strongly suggests insulin resistance. If Fasting Insulin and Fasting Glucose are both present but HOMA-IR is not reported, calculate it: (Fasting Insulin × Fasting Glucose) / 405. Mention if elevated.
+- HbA1c (blood sugar over 3 months): optimal is below 5.4%. The range 5.4–5.7% is suboptimal — mention it as a yellow flag even if the lab marks it normal. Above 5.7% is prediabetes range.
+- Triglyceride-to-HDL ratio: if both Triglycerides and HDL Cholesterol are present, calculate this ratio (Triglycerides ÷ HDL). Below 2.0 is good; below 1.0 is ideal; above 3.5 is a red flag for cardiovascular risk. Always mention this calculation if both values are available.
+- ApoB (apolipoprotein B): optimal is below 80 mg/dL for moderate risk; below 60 mg/dL for high risk. Treat values above 80 as worth discussing with a doctor even if the lab considers them normal.
+- hs-CRP (high-sensitivity C-reactive protein): optimal is below 1.0 mg/L. Values above 1.0 indicate low-grade inflammation. Values above 3.0 are a significant marker of cardiovascular risk.
+- Vitamin D (25-OH Vitamin D): optimal is 50–80 ng/mL. Anything below 50 is suboptimal — mention it even if the lab marks it normal. Below 30 is deficient.
+- VO2 Max (aerobic fitness): for men over 40, above 40 mL/kg/min is good; for women over 40, above 35 mL/kg/min is good. Lower values indicate reduced cardiovascular fitness.
+- Blood pressure: optimal is below 120/80 mmHg; ideal is around 110/70 mmHg. The range 120–129/below 80 is elevated. Above 130/80 is Stage 1 hypertension.
+- Testosterone (men only): optimal is 600–1000+ ng/dL. Below 400 ng/dL is low and worth discussing with a doctor. Values between 400–600 are suboptimal for most men.
+
+IMPORTANT for clinical context: Never mention any source or reference for these ranges. Never diagnose. Always recommend consulting a doctor for anything flagged. Keep all explanations in simple, everyday language.`
+
 // Returns a human-readable date label for a report, e.g. "15 Mar 2025" or "uploaded 10 Apr 2025"
 function reportDateLabel(r) {
   if (r.report_date) {
@@ -110,7 +125,8 @@ INSTRUCTIONS:
 - If it is unclear which report the user is asking about, ask a short clarifying question before answering.
 - Write at a Class 8 reading level. Explain medical terms in plain words immediately after using them.
 - Be warm and reassuring — users may be anxious about their results.
-- Never diagnose or prescribe. Say "please consult your doctor" for anything clinical.`
+- Never diagnose or prescribe. Say "please consult your doctor" for anything clinical.
+${CLINICAL_CONTEXT}`
 }
 
 export function buildReportPageChatSystemPrompt(report, analysis, userName, isFirstMessage) {
@@ -162,7 +178,8 @@ INSTRUCTIONS:
 - Write at a Class 8 reading level. Explain medical terms in simple words.
 - Be warm and reassuring. These are elderly or non-technical users who may be anxious.
 - If a value is abnormal, explain what it means simply and suggest they discuss it with their doctor.
-- Never diagnose conditions or prescribe medication. Say "please consult your doctor" for anything clinical.`
+- Never diagnose conditions or prescribe medication. Say "please consult your doctor" for anything clinical.
+${CLINICAL_CONTEXT}`
 }
 
 export function buildChatSystemPrompt(report, analysis, userName, isFirstMessage) {
@@ -214,5 +231,6 @@ INSTRUCTIONS:
 - Never use jargon without immediately explaining it in plain language.
 - Be warm and reassuring. These are elderly or non-technical users who may be anxious.
 - If a value is abnormal, explain what it means simply and suggest they discuss it with their doctor.
-- Never diagnose conditions or prescribe medication. Say "please consult your doctor" for anything clinical.`
+- Never diagnose conditions or prescribe medication. Say "please consult your doctor" for anything clinical.
+${CLINICAL_CONTEXT}`
 }

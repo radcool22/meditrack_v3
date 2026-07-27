@@ -1,8 +1,9 @@
 import crypto from 'crypto'
 import supabase from '../services/supabase.js'
 import { buildRenderPayload } from '../services/renderPayloadMapper.js'
+import { sendWhatsAppText } from '../services/whatsappService.js'
 
-const RENDER_SERVICE_URL = 'https://meditrack-render.fly.dev'
+const RENDER_SERVICE_URL = process.env.RENDER_SERVICE_URL || 'https://meditrack-render.fly.dev'
 
 export async function generateVideo(req, res) {
   const { id } = req.params
@@ -127,6 +128,20 @@ export async function cancelVideo(req, res) {
   return res.json({ cancelled: true })
 }
 
+function toPublicUrl(presignedUrl) {
+  if (!process.env.R2_PUBLIC_URL || !presignedUrl) return null
+  try {
+    const url = new URL(presignedUrl)
+    // R2 presigned URLs are path-style: /<bucket>/<object-key>
+    // Strip the leading bucket segment to get just the object key
+    const segments = url.pathname.replace(/^\//, '').split('/')
+    const objectKey = segments.slice(1).join('/')
+    return `${process.env.R2_PUBLIC_URL}/${objectKey}`
+  } catch {
+    return null
+  }
+}
+
 export async function getVideoStatus(req, res) {
   const { id } = req.params
   const { userId } = req.user
@@ -142,11 +157,37 @@ export async function getVideoStatus(req, res) {
     return res.status(404).json({ error: 'Report not found' })
   }
 
+  let videoUrl = report.video_url
+
+  // Convert legacy presigned URLs to permanent public URLs
+  if (report.video_status === 'ready' && videoUrl?.includes('X-Amz-Signature')) {
+    const publicUrl = toPublicUrl(videoUrl)
+    if (publicUrl) {
+      videoUrl = publicUrl
+      await supabase.from('reports').update({ video_url: publicUrl }).eq('id', id)
+    }
+  }
+
   return res.json({
     videoStatus: report.video_status,
-    videoUrl:    report.video_url,
+    videoUrl,
     videoError:  report.video_error,
   })
+}
+
+async function notifyWhatsAppVideoReady(reportId) {
+  const { data: report } = await supabase
+    .from('reports')
+    .select('whatsapp_wa_id, report_title')
+    .eq('id', reportId)
+    .maybeSingle()
+
+  if (!report?.whatsapp_wa_id) return
+
+  const title   = report.report_title ? `*${report.report_title}*` : 'Your report'
+  const message = `${title} video is ready! Open MediTrack to watch it: meditrack.in`
+  await sendWhatsAppText(report.whatsapp_wa_id, message)
+  console.log('[WhatsApp] video ready notification sent to', report.whatsapp_wa_id, '| reportId:', reportId)
 }
 
 export async function handleVideoCallback(req, res) {
@@ -169,11 +210,12 @@ export async function handleVideoCallback(req, res) {
   }
 
   if (status === 'completed') {
+    const finalUrl = videoUrl?.includes('X-Amz-Signature') ? (toPublicUrl(videoUrl) ?? videoUrl) : videoUrl
     await supabase
       .from('reports')
       .update({
         video_status:       'ready',
-        video_url:          videoUrl,
+        video_url:          finalUrl,
         video_error:        null,
         video_generated_at: completedAt ?? new Date().toISOString(),
       })
@@ -189,5 +231,14 @@ export async function handleVideoCallback(req, res) {
       .eq('id', reportId)
   }
 
-  return res.json({ received: true })
+  res.json({ received: true })
+
+  // ── WhatsApp video notification — isolated, fire-and-forget ─────────────
+  // Fires AFTER the response is sent. Never throws, never blocks, never
+  // affects the callback response above under any circumstances.
+  if (status === 'completed') {
+    notifyWhatsAppVideoReady(reportId).catch((err) => {
+      console.error('[WhatsApp] video notification failed (non-fatal):', err.message)
+    })
+  }
 }

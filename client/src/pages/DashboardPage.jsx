@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import axios from 'axios'
+import axios from '../utils/axios'
 import logo from '../assets/logo.svg'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'

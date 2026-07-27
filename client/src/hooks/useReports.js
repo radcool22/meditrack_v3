@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import axios from 'axios'
+import axios from '../utils/axios'
 import { useAuth } from '../context/AuthContext'
 import { friendly } from '../utils/friendlyError'
 

@@ -14,6 +14,7 @@ import reportsRouter from './routes/reports.js'
 import analysisRouter from './routes/analysis.js'
 import chatRouter from './routes/chat.js'
 import videosRouter from './routes/videos.js'
+import whatsappRouter from './routes/whatsappRoutes.js'
 import { handleTtsConnection } from './services/elevenLabsTts.js'
 
 const app = express()
@@ -27,6 +28,7 @@ app.use('/api/reports', reportsRouter)
 app.use('/api/analysis', analysisRouter)
 app.use('/api/chat', chatRouter)
 app.use('/api/videos', videosRouter)
+app.use('/api/whatsapp', whatsappRouter)
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }))
 

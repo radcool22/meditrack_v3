@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import axios from 'axios'
+import axios from '../utils/axios'
 import { useAuth } from '../context/AuthContext'
 
 const POLL_INTERVAL_MS = 5000
