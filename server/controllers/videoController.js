@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import supabase from '../services/supabase.js'
 import { buildRenderPayload } from '../services/renderPayloadMapper.js'
-import { sendWhatsAppText } from '../services/whatsappService.js'
+import { sendWhatsAppText, sendWhatsAppVideo } from '../services/whatsappService.js'
 
 const RENDER_SERVICE_URL = process.env.RENDER_SERVICE_URL || 'https://meditrack-render.fly.dev'
 
@@ -178,16 +178,42 @@ export async function getVideoStatus(req, res) {
 async function notifyWhatsAppVideoReady(reportId) {
   const { data: report } = await supabase
     .from('reports')
-    .select('whatsapp_wa_id, report_title')
+    .select('whatsapp_wa_id, report_title, video_url')
     .eq('id', reportId)
     .maybeSingle()
 
   if (!report?.whatsapp_wa_id) return
 
+  // Session language — falls back to 'en' if no session row exists
+  const { data: session } = await supabase
+    .from('whatsapp_sessions')
+    .select('language')
+    .eq('wa_id', report.whatsapp_wa_id)
+    .maybeSingle()
+
+  const lang    = session?.language ?? 'en'
+  const caption = lang === 'hi'
+    ? 'यह रहा आपका वीडियो सारांश! विस्तृत जानकारी के लिए meditrack.in पर जाएं।'
+    : "Here's your video summary! Visit meditrack.in for detailed insights."
+
+  // Attempt native video message first
+  if (report.video_url) {
+    try {
+      await sendWhatsAppVideo(report.whatsapp_wa_id, report.video_url, caption)
+      console.log('[WhatsApp] video sent natively to', report.whatsapp_wa_id, '| reportId:', reportId)
+      return
+    } catch (err) {
+      console.warn('[WhatsApp] native video send failed, falling back to text:', err.message)
+    }
+  }
+
+  // Fallback: text with link
   const title   = report.report_title ? `*${report.report_title}*` : 'Your report'
-  const message = `${title} video is ready! Open MediTrack to watch it: meditrack.in`
+  const message = lang === 'hi'
+    ? `${title} का वीडियो तैयार है! यहाँ देखें: ${report.video_url ?? 'meditrack.in'}`
+    : `${title} video is ready! Watch it here: ${report.video_url ?? 'meditrack.in'}`
   await sendWhatsAppText(report.whatsapp_wa_id, message)
-  console.log('[WhatsApp] video ready notification sent to', report.whatsapp_wa_id, '| reportId:', reportId)
+  console.log('[WhatsApp] video ready text notification sent to', report.whatsapp_wa_id, '| reportId:', reportId)
 }
 
 export async function handleVideoCallback(req, res) {

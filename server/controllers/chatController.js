@@ -60,7 +60,7 @@ export async function sendMessage(req, res) {
   return res.json({ reply })
 }
 
-export async function generateCombinedChatReply(userId, userMessage, history = []) {
+export async function generateCombinedChatReply(userId, userMessage, history = [], language = null) {
   // Load all done reports + user name in parallel
   // Order by report_date (the date on the document) ascending — nulls last via uploaded_at
   const [{ data: reports }, { data: userRow }] = await Promise.all([
@@ -86,8 +86,16 @@ export async function generateCombinedChatReply(userId, userMessage, history = [
   const isFirstMessage = history.length === 0
   const systemPrompt   = buildCombinedChatSystemPrompt(reportsWithAnalysis, userName, isFirstMessage)
 
+  // Only set by WhatsApp when the user has explicitly chosen a language.
+  // When language is null (all website calls), languageOverride is '' and the prompt is identical.
+  const languageOverride = language === 'hi'
+    ? '\n\nOVERRIDE — USER LANGUAGE PREFERENCE: The user has explicitly chosen Hindi. You MUST respond in Hindi using Devanagari script (हिंदी). Do NOT use Roman/English-alphabet Hindi. This overrides the auto-detect rule above.'
+    : language === 'en'
+    ? '\n\nOVERRIDE — USER LANGUAGE PREFERENCE: The user has explicitly chosen English. You MUST respond in English.'
+    : ''
+
   const messages = [
-    { role: 'system', content: systemPrompt },
+    { role: 'system', content: systemPrompt + languageOverride },
     ...history.map((m) => ({ role: m.role, content: m.content })),
     { role: 'user', content: userMessage.trim() },
   ]

@@ -189,3 +189,30 @@ export function handleTtsConnection(ws) {
     elevenWs?.close()
   })
 }
+
+export async function generateTtsBuffer(text, lang = 'en') {
+  const voiceId = VOICE_IDS[lang === 'hi' ? 'hi-IN' : 'en-IN']
+
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+    {
+      method:  'POST',
+      headers: {
+        'xi-api-key':   process.env.ELEVENLABS_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text:           preprocessForVoice(text),
+        model_id:       'eleven_flash_v2_5',
+        voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0, use_speaker_boost: true },
+      }),
+    }
+  )
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`ElevenLabs TTS failed (${res.status}): ${errText}`)
+  }
+
+  return Buffer.from(await res.arrayBuffer())
+}
