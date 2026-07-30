@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react'
 import axios from '../utils/axios'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { friendly } from '../utils/friendlyError'
 
 export function useCombinedChat() {
   const { token } = useAuth()
+  const { language } = useLanguage()
   const [messages, setMessages] = useState([])
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -24,7 +26,7 @@ export function useCombinedChat() {
         const history = messages.map((m) => ({ role: m.role, content: m.content }))
         const { data } = await axios.post(
           '/api/chat/combined',
-          { message: text.trim(), history },
+          { message: text.trim(), history, language },
           { headers }
         )
         setMessages((prev) => [
@@ -40,7 +42,7 @@ export function useCombinedChat() {
         setSending(false)
       }
     },
-    [messages, sending, token]
+    [messages, sending, token, language]
   )
 
   return { messages, loading: false, sending, error, sendMessage }

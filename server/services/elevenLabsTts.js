@@ -1,9 +1,11 @@
 import { WebSocket } from 'ws'
+import { getLanguage, getAllLanguages } from '../config/languages.js'
 
-const VOICE_IDS = {
-  'hi-IN': 'mActWQg9kibLro6Z2ouY',
-  'en-IN': 'PpXxSapWoo4j3JoF2LPQ',
-}
+// Maps a browser STT locale (what the website's /ws/tts client sends as
+// msg.lang, e.g. 'hi-IN') to a registry code. Built once at module load.
+const LOCALE_TO_CODE = Object.fromEntries(
+  getAllLanguages().map((l) => [l.browserSttLocale, l.code])
+)
 
 // ── Number-to-words helpers ──────────────────────────────────────────
 const ones = ['zero','one','two','three','four','five','six','seven','eight','nine',
@@ -133,13 +135,22 @@ export function handleTtsConnection(ws) {
       }
     }
 
-    const voiceId = VOICE_IDS[msg.lang] ?? VOICE_IDS['en-IN']
+    // getLanguage() falls back to English for any unmapped/unknown locale —
+    // same effective fallback as the old VOICE_IDS[msg.lang] ?? VOICE_IDS['en-IN'].
+    const lang    = getLanguage(LOCALE_TO_CODE[msg.lang] ?? 'en')
+    const voiceId = lang.elevenLabsVoiceId
 
-    elevenWs = new WebSocket(
+    // model_id/language_code query params: for en/hi (eleven_flash_v2_5) this
+    // produces the exact same URL as before — no language_code param existed
+    // or is added. Only eleven_v3 (mr/gu/ml) gets language_code appended.
+    let ttsUrl =
       `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input` +
-        `?model_id=eleven_flash_v2_5&output_format=mp3_44100_128`,
-      { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY } }
-    )
+      `?model_id=${lang.elevenLabsModel}&output_format=mp3_44100_128`
+    if (lang.elevenLabsModel === 'eleven_v3') {
+      ttsUrl += `&language_code=${lang.ttsLanguageCode}`
+    }
+
+    elevenWs = new WebSocket(ttsUrl, { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY } })
 
     elevenWs.on('open', () => {
       console.log('[TTS] ElevenLabs WS opened, sending text')
@@ -178,7 +189,7 @@ export function handleTtsConnection(ws) {
     })
 
     elevenWs.on('error', (err) => {
-      console.error('[TTS] ElevenLabs error:', err.message)
+      console.error(`[TTS] ElevenLabs WS error (lang=${lang.code}, model=${lang.elevenLabsModel}):`, err.message)
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'error', message: 'TTS error' }))
     })
   })
@@ -190,27 +201,36 @@ export function handleTtsConnection(ws) {
   })
 }
 
-export async function generateTtsBuffer(text, lang = 'en') {
-  const voiceId = VOICE_IDS[lang === 'hi' ? 'hi-IN' : 'en-IN']
+export async function generateTtsBuffer(text, langCode = 'en') {
+  // getLanguage() falls back to English for unknown codes — never Hindi.
+  const lang = getLanguage(langCode)
+
+  const body = {
+    text:           preprocessForVoice(text),
+    model_id:       lang.elevenLabsModel,
+    voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0, use_speaker_boost: true },
+  }
+  // Only eleven_v3 (mr/gu/ml) takes language_code — eleven_flash_v2_5 (en/hi)
+  // doesn't support it, so this keeps the en/hi request body identical to before.
+  if (lang.elevenLabsModel === 'eleven_v3') {
+    body.language_code = lang.ttsLanguageCode
+  }
 
   const res = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+    `https://api.elevenlabs.io/v1/text-to-speech/${lang.elevenLabsVoiceId}?output_format=mp3_44100_128`,
     {
       method:  'POST',
       headers: {
         'xi-api-key':   process.env.ELEVENLABS_API_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        text:           preprocessForVoice(text),
-        model_id:       'eleven_flash_v2_5',
-        voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0, use_speaker_boost: true },
-      }),
+      body: JSON.stringify(body),
     }
   )
 
   if (!res.ok) {
     const errText = await res.text()
+    console.error(`[TTS] ElevenLabs REST TTS failed (lang=${lang.code}, model=${lang.elevenLabsModel}, status=${res.status}):`, errText)
     throw new Error(`ElevenLabs TTS failed (${res.status}): ${errText}`)
   }
 

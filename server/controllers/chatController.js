@@ -1,6 +1,7 @@
 import supabase from '../services/supabase.js'
 import openai from '../services/openai.js'
 import { buildChatSystemPrompt, buildCombinedChatSystemPrompt, buildReportPageChatSystemPrompt } from '../services/prompts/chat.js'
+import { getLanguage } from '../config/languages.js'
 
 export async function sendMessage(req, res) {
   const { reportId } = req.params
@@ -61,6 +62,7 @@ export async function sendMessage(req, res) {
 }
 
 export async function generateCombinedChatReply(userId, userMessage, history = [], language = null) {
+  console.log('chat language param:', language)
   // Load all done reports + user name in parallel
   // Order by report_date (the date on the document) ascending — nulls last via uploaded_at
   const [{ data: reports }, { data: userRow }] = await Promise.all([
@@ -88,11 +90,17 @@ export async function generateCombinedChatReply(userId, userMessage, history = [
 
   // Only set by WhatsApp when the user has explicitly chosen a language.
   // When language is null (all website calls), languageOverride is '' and the prompt is identical.
-  const languageOverride = language === 'hi'
-    ? '\n\nOVERRIDE — USER LANGUAGE PREFERENCE: The user has explicitly chosen Hindi. You MUST respond in Hindi using Devanagari script (हिंदी). Do NOT use Roman/English-alphabet Hindi. This overrides the auto-detect rule above.'
-    : language === 'en'
-    ? '\n\nOVERRIDE — USER LANGUAGE PREFERENCE: The user has explicitly chosen English. You MUST respond in English.'
-    : ''
+  // getLanguage() falls back to the English entry for unknown/unsupported codes — never Hindi.
+  let languageOverride = ''
+  if (language) {
+    const lang = getLanguage(language)
+    languageOverride =
+      lang.code === 'hi'
+        ? '\n\nOVERRIDE — USER LANGUAGE PREFERENCE: The user has explicitly chosen Hindi. ' + lang.promptInstruction
+        : lang.code === 'en'
+        ? '\n\nOVERRIDE — USER LANGUAGE PREFERENCE: The user has explicitly chosen English. ' + lang.promptInstruction
+        : '\n\n' + lang.promptInstruction
+  }
 
   const messages = [
     { role: 'system', content: systemPrompt + languageOverride },
@@ -112,11 +120,12 @@ export async function generateCombinedChatReply(userId, userMessage, history = [
 
 export async function sendCombinedMessage(req, res) {
   const { userId } = req.user
-  const { message, history = [] } = req.body
+  const { message, history = [], language } = req.body
+  console.log('sendCombinedMessage req.body.language:', JSON.stringify(language))
 
   if (!message?.trim()) return res.status(400).json({ error: 'Message is required' })
 
-  const reply = await generateCombinedChatReply(userId, message, history)
+  const reply = await generateCombinedChatReply(userId, message, history, language)
   return res.json({ reply })
 }
 

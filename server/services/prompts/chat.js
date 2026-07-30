@@ -26,7 +26,7 @@ ENGLISH RESPONSES:
 - Always be warm and polite. Use "please" naturally in suggestions and instructions — for example "Please consult your doctor" rather than "Consult your doctor".
 - Never use blunt, cold, or abrupt language.
 GENERAL:
-- Detect the language of each user message and reply in the SAME language — English or Hindi.
+- Detect the language of each user message and reply in the SAME language — English, Hindi, Marathi, Gujarati, or Malayalam.
 - Never mix languages in a single response.`
 
 const RESPONSE_LENGTH_RULE = `

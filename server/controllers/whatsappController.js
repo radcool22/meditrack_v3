@@ -1,12 +1,23 @@
-import { findUserByWhatsAppNumber, sendWhatsAppText, sendWhatsAppAudio, sendWhatsAppVideo, downloadWhatsAppMedia, processReportFromBuffer, upsertWhatsAppSession, triggerVideoFromWhatsApp, getOrCreateSession, updateSessionState, detectLanguageSwitch, appendHistory, getDoneReports, triggerVideoForReport, transcribeWhatsAppAudio } from '../services/whatsappService.js'
+import { findUserByWhatsAppNumber, sendWhatsAppText, sendWhatsAppAudio, sendWhatsAppVideo, downloadWhatsAppMedia, processReportFromBuffer, upsertWhatsAppSession, triggerVideoFromWhatsApp, getOrCreateSession, updateSessionState, setUserLanguagePreference, detectLanguageSwitch, appendHistory, getDoneReports, triggerVideoForReport, transcribeWhatsAppAudio } from '../services/whatsappService.js'
 import { generateCombinedChatReply } from './chatController.js'
 import { generateTtsBuffer } from '../services/elevenLabsTts.js'
 
 // Mirrors the detection patterns in whatsappService.js, used to strip the
 // switch phrase from a message so we can find any remaining request content.
 // Longer alternatives are listed first so they consume the full phrase before
-// the bare 'english'/'hindi' fallback can match.
-const LANG_PHRASE_RE = /\b(?:speak\s+in\s+(?:english|hindi)|talk\s+in\s+(?:english|hindi)|reply\s+in\s+(?:english|hindi)|switch\s+to\s+(?:english|hindi)|hindi\s+mein\s+baat\s+karo|(?:english|hindi)\s+me(?:in?|h)?|in\s+(?:english|hindi)|(?:english|hindi)\s+please|english|hindi)\b|हिंदी|हिन्दी/gi
+// the bare language-name fallback can match.
+const LANG_PHRASE_RE = /\b(?:speak\s+in\s+(?:english|hindi|marathi|gujarati|malayalam)|talk\s+in\s+(?:english|hindi|marathi|gujarati|malayalam)|reply\s+in\s+(?:english|hindi|marathi|gujarati|malayalam)|switch\s+to\s+(?:english|hindi|marathi|gujarati|malayalam)|(?:hindi|marathi|gujarati|malayalam)\s+mein\s+baat\s+karo|(?:english|hindi|marathi|gujarati|malayalam)\s+me(?:in?|h)?|in\s+(?:english|hindi|marathi|gujarati|malayalam)|(?:english|hindi|marathi|gujarati|malayalam)\s+please|english|hindi|marathi|gujarati|malayalam)\b|हिंदी|हिन्दी|मराठी|ગુજરાતી|മലയാളം/gi
+
+// Native-script confirmation sent after a pure language switch (no other
+// content in the message). Marathi/Gujarati/Malayalam text is best-effort
+// machine-authored — have a native speaker sanity-check before relying on it.
+const SWITCH_CONFIRMATIONS = {
+  en: "Done — I'll reply in English from now on.",
+  hi: 'ठीक है — अब मैं हिंदी में जवाब दूंगा।',
+  mr: 'ठीक आहे — आता मी मराठीत उत्तर देईन.',
+  gu: 'સારું — હવે હું ગુજરાતીમાં જવાબ આપીશ.',
+  ml: 'ശരി — ഇനി ഞാൻ മലയാളത്തിൽ മറുപടി നൽകും.',
+}
 
 const VIDEO_STRINGS = {
   en: {
@@ -50,17 +61,19 @@ function buildReportListMessage(reportList, lang) {
 
 // Delivers a chat reply in the appropriate modality.
 // Status/system messages always use sendWhatsAppText regardless of isVoice.
+// Voice degrades gracefully to text on any TTS/audio-send failure (e.g. an
+// eleven_v3 call for mr/gu/ml failing) instead of silently dropping the reply.
 async function sendChatReply(waId, text, lang, isVoice) {
   if (isVoice) {
     try {
       const audioBuffer = await generateTtsBuffer(text, lang)
       await sendWhatsAppAudio(waId, audioBuffer)
+      return
     } catch (err) {
-      console.error('[WhatsApp] voice reply TTS/send error:', err.message)
+      console.error(`[WhatsApp] voice reply failed (lang=${lang}) — falling back to text:`, err.message)
     }
-  } else {
-    await sendWhatsAppText(waId, text)
   }
+  await sendWhatsAppText(waId, text)
 }
 
 // Shared routing core — called by both text and voice handlers after any
@@ -104,6 +117,7 @@ async function handleMessage(waId, user, text, isVoice) {
   const switchedLang = detectLanguageSwitch(text)
   if (switchedLang) {
     await updateSessionState(waId, { language: switchedLang })
+    await setUserLanguagePreference(user.id, switchedLang)
 
     const stripped       = text.replace(LANG_PHRASE_RE, '').replace(/[,\s]+/g, ' ').trim()
     const remainingWords = stripped.split(/\s+/).filter(w => w.length > 1)
@@ -143,9 +157,7 @@ async function handleMessage(waId, user, text, isVoice) {
     }
 
     // Pure language switch — confirm in the new language
-    const confirmation = switchedLang === 'hi'
-      ? 'ठीक है — अब मैं हिंदी में जवाब दूंगा।'
-      : "Done — I'll reply in English from now on."
+    const confirmation = SWITCH_CONFIRMATIONS[switchedLang] ?? SWITCH_CONFIRMATIONS.en
     await sendWhatsAppText(waId, confirmation)
     return
   }
@@ -249,7 +261,7 @@ async function handleIncoming(body) {
 
     let transcribed
     try {
-      transcribed = await transcribeWhatsAppAudio(mediaId)
+      transcribed = await transcribeWhatsAppAudio(mediaId, user.language_preference)
       console.log('[WhatsApp] transcribed from', waId, ':', transcribed)
     } catch (err) {
       console.error('[WhatsApp] transcription error:', err.message)

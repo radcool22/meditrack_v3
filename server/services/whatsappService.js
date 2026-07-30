@@ -2,6 +2,7 @@ import supabase from './supabase.js'
 import { storeReportFile } from '../controllers/reportsController.js'
 import { runAnalysisPipeline } from '../controllers/analysisController.js'
 import { scheduleVideoRender } from './videoService.js'
+import { getLanguage } from '../config/languages.js'
 
 const GRAPH_API_BASE = 'https://graph.facebook.com/v21.0'
 
@@ -39,11 +40,20 @@ export async function sendWhatsAppText(toNumber, messageText) {
   }
 }
 
-export async function transcribeWhatsAppAudio(mediaId) {
+/**
+ * @param {string} mediaId
+ * @param {string|null} [languageCode] - user's chosen language code (en/hi/mr/gu/ml).
+ *   Passed to Scribe v2 as a hint so incoming voice notes are transcribed in the
+ *   right language. Unknown/missing codes resolve to English via getLanguage().
+ *   NOTE: unlike the TTS calls, this adds a new form field for every language,
+ *   including en/hi — there is no pre-existing "no hint" call to stay identical to.
+ */
+export async function transcribeWhatsAppAudio(mediaId, languageCode) {
   const { buffer, mimeType } = await downloadWhatsAppMedia(mediaId)
 
   const formData = new FormData()
   formData.append('model_id', 'scribe_v2')
+  formData.append('language_code', getLanguage(languageCode).ttsLanguageCode)
   formData.append(
     'file',
     new Blob([buffer], { type: mimeType ?? 'audio/ogg' }),
@@ -182,6 +192,20 @@ export async function findUserByWhatsAppNumber(waId) {
   }
 
   return user ?? null
+}
+
+/**
+ * Persists the user's explicit language choice to users.language_preference,
+ * so it survives independent of any single WhatsApp session row.
+ * Requires the users_language_preference_check constraint to allow the code —
+ * see server/migrations/widen_language_preference.sql for mr/gu/ml.
+ */
+export async function setUserLanguagePreference(userId, languageCode) {
+  const { error } = await supabase
+    .from('users')
+    .update({ language_preference: languageCode })
+    .eq('id', userId)
+  if (error) console.error('[WhatsApp] setUserLanguagePreference error:', error.message)
 }
 
 export async function downloadWhatsAppMedia(mediaId) {
@@ -326,22 +350,53 @@ export async function updateSessionState(waId, updates) {
   if (error) console.error('[WhatsApp] updateSessionState error:', error.message)
 }
 
-// Patterns that signal the user wants to switch to English
-const ENGLISH_SWITCH = /\b(?:english|speak\s+in\s+english|talk\s+in\s+english|reply\s+in\s+english|switch\s+to\s+english|in\s+english|english\s+me(?:in?|h)?|english\s+please)\b/i
-
-// Patterns that signal the user wants to switch to Hindi (Latin script + Devanagari)
-const HINDI_SWITCH_LATIN      = /\b(?:hindi|speak\s+in\s+hindi|talk\s+in\s+hindi|reply\s+in\s+hindi|switch\s+to\s+hindi|in\s+hindi|hindi\s+me(?:in?|h)?|hindi\s+mein\s+baat\s+karo|hindi\s+please)\b/i
-const HINDI_SWITCH_DEVANAGARI = /हिंदी|हिन्दी/
+// Patterns that signal the user wants to switch to a given language.
+// Each entry has a Latin-script phrasing pattern (verb forms + bare language
+// name) and, for languages with their own script, a native-script word match
+// (matches the specific word for the language, e.g. "हिंदी" — not just any
+// character in that script, so Marathi's Devanagari doesn't collide with Hindi's).
+const LANGUAGE_SWITCH_PATTERNS = [
+  {
+    code: 'hi',
+    latin: /\b(?:hindi|speak\s+in\s+hindi|talk\s+in\s+hindi|reply\s+in\s+hindi|switch\s+to\s+hindi|in\s+hindi|hindi\s+me(?:in?|h)?|hindi\s+mein\s+baat\s+karo|hindi\s+please)\b/i,
+    native: /हिंदी|हिन्दी/,
+  },
+  {
+    code: 'mr',
+    latin: /\b(?:marathi|speak\s+in\s+marathi|talk\s+in\s+marathi|reply\s+in\s+marathi|switch\s+to\s+marathi|in\s+marathi|marathi\s+me(?:in?|h)?|marathi\s+mein\s+baat\s+karo|marathi\s+please)\b/i,
+    native: /मराठी/,
+  },
+  {
+    code: 'gu',
+    latin: /\b(?:gujarati|speak\s+in\s+gujarati|talk\s+in\s+gujarati|reply\s+in\s+gujarati|switch\s+to\s+gujarati|in\s+gujarati|gujarati\s+me(?:in?|h)?|gujarati\s+mein\s+baat\s+karo|gujarati\s+please)\b/i,
+    native: /ગુજરાતી/,
+  },
+  {
+    code: 'ml',
+    latin: /\b(?:malayalam|speak\s+in\s+malayalam|talk\s+in\s+malayalam|reply\s+in\s+malayalam|switch\s+to\s+malayalam|in\s+malayalam|malayalam\s+me(?:in?|h)?|malayalam\s+mein\s+baat\s+karo|malayalam\s+please)\b/i,
+    native: /മലയാളം/,
+  },
+  {
+    code: 'en',
+    latin: /\b(?:english|speak\s+in\s+english|talk\s+in\s+english|reply\s+in\s+english|switch\s+to\s+english|in\s+english|english\s+me(?:in?|h)?|english\s+please)\b/i,
+  },
+]
 
 /**
- * Returns 'en', 'hi', or null.
- * Hindi is checked first so "hindi mein baat karo english nahi" resolves to 'hi'.
+ * Returns a supported language code, or null if no switch phrase is found.
+ * Non-English languages are checked before English so a mixed phrase like
+ * "hindi mein baat karo english nahi" still resolves to the intended language
+ * (mirrors the original Hindi-before-English precedence, generalized to all 5).
  */
 export function detectLanguageSwitch(messageText) {
   if (!messageText) return null
   const t = messageText.trim()
-  if (HINDI_SWITCH_LATIN.test(t) || HINDI_SWITCH_DEVANAGARI.test(t)) return 'hi'
-  if (ENGLISH_SWITCH.test(t)) return 'en'
+  for (const { code, latin, native } of LANGUAGE_SWITCH_PATTERNS) {
+    if (code === 'en') continue
+    if (latin.test(t) || (native && native.test(t))) return code
+  }
+  const english = LANGUAGE_SWITCH_PATTERNS.find((p) => p.code === 'en')
+  if (english.latin.test(t)) return 'en'
   return null
 }
 
