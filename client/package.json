@@ -21,5 +21,8 @@
     "postcss": "^8.4.47",
     "autoprefixer": "^10.4.20"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "overrides": {
+    "nanoid": "^3.3.18"
+  }
 }
