@@ -1,520 +1,258 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#1A1A1A">
-<meta name="description" content="MediTrack Terms and Conditions — Please read before using the service.">
-<title>Terms & Conditions — MediTrack</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Terms &amp; Conditions — MediTrack</title>
+<meta name="description" content="The terms for using MediTrack on the web, on WhatsApp and by phone.">
+<meta name="theme-color" content="#F7F6F4">
 <link rel="icon" type="image/png" href="meditrack-icon-256.png">
-<link rel="apple-touch-icon" href="meditrack-icon-256.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-a{text-decoration:none;color:inherit}
-
-:root{
-  --ink:#111;
-  --ink2:#444;
-  --ink3:#666;
-  --white:#fff;
-  --off:#F4F4F4;
-  --border:#E0E0E0;
-  --lime:#A8D833;
-  --lime-dk:#6E9910;
-  --lime-lt:#EEF7CC;
-  --blue:#1D55CC;
-  --dark:#1A1A1A;
-  --r-pill:999px;
-  --r-card:20px;
-  --r-sm:12px;
-}
-
-html{
-  scroll-behavior:smooth;
-  -webkit-text-size-adjust:100%;
-  background:var(--dark);
-}
-body{
-  font-family:'Inter',sans-serif;
-  font-size:16px;
-  line-height:1.6;
-  color:var(--ink);
-  background:var(--white);
-  overflow-x:hidden;
-  -webkit-font-smoothing:antialiased;
-}
-:focus-visible{outline:2px solid var(--lime-dk);outline-offset:3px;border-radius:4px}
-
-/* ── NAV */
-.site-header{
-  position:sticky;top:0;z-index:100;
-  background:rgba(255,255,255,0.96);
-  backdrop-filter:blur(16px);
-  -webkit-backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--border);
-  transition:box-shadow .25s;
-}
-.site-header.scrolled{box-shadow:0 2px 16px rgba(0,0,0,.07)}
-.nav-wrap{
-  max-width:1200px;margin:0 auto;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 24px;height:64px;
-}
-.logo{display:flex;align-items:center;gap:3px;font-size:1.15rem;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
-.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--lime);margin-bottom:2px;animation:pulse-dot 2.4s ease-in-out infinite}
-@keyframes pulse-dot{0%,100%{transform:scale(1)}50%{transform:scale(1.5)}}
-.back-btn{font-size:.875rem;font-weight:600;color:var(--ink3);border:1.5px solid var(--border);padding:.4rem 1rem;border-radius:var(--r-pill);transition:border-color .15s,color .15s;display:inline-flex;align-items:center;gap:6px}
-.back-btn:hover{border-color:var(--ink);color:var(--ink)}
-
-/* ── PAGE HERO */
-.page-hero{
-  background:var(--dark);
-  padding:72px 32px 64px;
-  border-bottom:1px solid rgba(255,255,255,.08);
-}
-.page-hero-inner{max-width:800px;margin:0 auto}
-.page-eyebrow{
-  display:inline-flex;align-items:center;gap:7px;
-  background:rgba(168,216,51,.12);border-radius:var(--r-pill);
-  padding:5px 14px;margin-bottom:20px;
-}
-.page-eyebrow span{font-size:.72rem;font-weight:700;color:var(--lime);letter-spacing:.07em;text-transform:uppercase}
-.page-h1{
-  font-size:clamp(2rem,5vw,3.2rem);
-  font-weight:900;line-height:1.04;letter-spacing:-.04em;
-  color:#fff;margin-bottom:16px;
-}
-.page-meta{font-size:.9rem;color:rgba(255,255,255,.38);display:flex;gap:24px;flex-wrap:wrap}
-.page-meta span{display:flex;align-items:center;gap:5px}
-@media(max-width:640px){
-  .page-hero{padding:48px 20px 48px}
-  .page-h1{font-size:clamp(1.8rem,8vw,2.4rem)}
-}
-
-/* ── TOC */
-.toc-bar{
-  background:var(--off);
-  border-bottom:1px solid var(--border);
-  padding:20px 32px;
-}
-.toc-inner{max-width:800px;margin:0 auto}
-.toc-label{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--lime-dk);margin-bottom:12px}
-.toc-list{display:flex;flex-direction:column;gap:6px}
-.toc-list a{font-size:.875rem;color:var(--ink3);font-weight:500;transition:color .15s;display:flex;align-items:center;gap:8px}
-.toc-list a::before{content:'';display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--lime);flex-shrink:0}
-.toc-list a:hover{color:var(--lime-dk)}
-@media(min-width:600px){
-  .toc-list{display:grid;grid-template-columns:1fr 1fr;gap:6px 32px}
-}
-@media(max-width:640px){.toc-bar{padding:20px}}
-
-/* ── IMPORTANT BANNER */
-.important-banner{
-  background:linear-gradient(135deg,rgba(168,216,51,.08),rgba(168,216,51,.03));
-  border:1.5px solid rgba(168,216,51,.3);
-  border-radius:var(--r-card);
-  padding:28px 32px;
-  margin-bottom:40px;
-}
-.important-banner strong{display:block;font-size:.875rem;font-weight:800;color:var(--lime-dk);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px}
-.important-banner p{font-size:1rem;color:var(--ink2);line-height:1.7}
-
-/* ── CONTENT */
-.terms-body{padding:64px 32px 96px}
-.terms-inner{max-width:800px;margin:0 auto}
-
-.tc-section{margin-bottom:56px;scroll-margin-top:80px}
-.tc-section:last-child{margin-bottom:0}
-
-.tc-num{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--lime-dk);display:block;margin-bottom:8px}
-.tc-h2{font-size:1.4rem;font-weight:800;letter-spacing:-.03em;color:var(--ink);margin-bottom:20px;padding-bottom:12px;border-bottom:1.5px solid var(--border)}
-
-.tc-section p{font-size:1rem;color:var(--ink2);line-height:1.85;margin-bottom:14px}
-.tc-section p:last-child{margin-bottom:0}
-.tc-section strong{color:var(--ink);font-weight:700}
-
-/* sub-sections */
-.tc-sub{margin-top:24px}
-.tc-sub-h{font-size:.9375rem;font-weight:700;color:var(--ink);margin-bottom:8px}
-
-/* bullet lists */
-.tc-list{margin:12px 0 16px 0;display:flex;flex-direction:column;gap:8px}
-.tc-list li{font-size:1rem;color:var(--ink2);line-height:1.75;padding-left:20px;position:relative}
-.tc-list li::before{content:'';position:absolute;left:0;top:10px;width:5px;height:5px;border-radius:50%;background:var(--lime)}
-
-/* disclaimer callout */
-.tc-callout{
-  background:rgba(255,0,0,.04);
-  border:1.5px solid rgba(220,38,38,.18);
-  border-radius:var(--r-sm);
-  padding:20px 24px;
-  margin:20px 0;
-}
-.tc-callout p{color:#b91c1c!important;font-weight:500}
-
-/* pill tags for third-party services */
-.service-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.service-tag{font-size:.8rem;font-weight:600;background:var(--off);border:1px solid var(--border);color:var(--ink3);padding:4px 12px;border-radius:var(--r-pill)}
-
-/* ── FOOTER */
-.site-footer{background:var(--dark);padding:40px 32px}
-.footer-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
-.footer-logo{font-size:1.1rem;font-weight:800;letter-spacing:-.03em;color:#fff;display:flex;align-items:center;gap:3px}
-.footer-logo-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);margin-bottom:2px}
-.footer-copy{font-size:.875rem;color:rgba(255,255,255,.35)}
-.footer-links{display:flex;gap:20px}
-.footer-links a{font-size:.875rem;color:rgba(255,255,255,.4);transition:color .15s;font-weight:500}
-.footer-links a:hover{color:rgba(255,255,255,.85)}
-@media(max-width:640px){
-  .terms-body{padding:40px 20px 72px}
-  .site-footer{padding:32px 20px}
-  .footer-inner{flex-direction:column;align-items:flex-start;gap:12px}
-}
+:root { --bg: #F7F6F4; --ink: #111; --ink-2: #3a3a3a; --muted: #6b6b6b; --line: rgba(17,17,17,.09); --red: #FF3B30; --blue: #3478F7; --display: "Inter Tight", system-ui, sans-serif; --body: "Inter", system-ui, sans-serif; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--ink); font: 16.5px/1.65 var(--body); -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+.wrap { width: min(1100px, 100% - 40px); margin-inline: auto; }
+.nav { position: sticky; top: 14px; z-index: 10; margin: 14px auto 0; width: min(1100px, calc(100% - 24px)); display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 8px 22px; border-radius: 999px; background: rgba(247,246,244,.75); backdrop-filter: saturate(1.6) blur(16px); -webkit-backdrop-filter: saturate(1.6) blur(16px); border: 1px solid var(--line); }
+.logo { font: 700 22px/1 var(--display); letter-spacing: -0.04em; text-decoration: none; }
+.logo i { color: var(--red); font-style: normal; }
+.nav a.back { text-decoration: none; height: 42px; padding: 0 18px; border-radius: 999px; background: var(--ink); color: #fff; display: inline-flex; align-items: center; font: 600 14px var(--body); }
+header.top { padding: 70px 0 40px; }
+.eyebrow { font: 600 13px/1 var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(40px, 7vw, 76px)/1 var(--display); letter-spacing: -0.035em; margin: 16px 0 18px; }
+.meta { color: var(--muted); font-size: 14.5px; }
+.layout { display: grid; grid-template-columns: 240px 1fr; gap: 60px; padding-bottom: 80px; }
+.toc { position: sticky; top: 100px; align-self: start; font-size: 14px; }
+.toc ol { list-style: none; display: grid; gap: 8px; counter-reset: t; }
+.toc a { text-decoration: none; color: var(--muted); }
+.toc a:hover { color: var(--ink); }
+article section { padding: 34px 0; border-top: 1px solid var(--line); scroll-margin-top: 90px; }
+article section:first-child { border-top: 0; padding-top: 0; }
+h2 { font: 700 26px/1.2 var(--display); letter-spacing: -0.025em; margin-bottom: 14px; }
+h2 span { color: var(--muted); font-weight: 600; margin-right: 10px; }
+h3 { font: 600 17px/1.3 var(--body); margin: 20px 0 6px; }
+p + p, p + ul, ul + p { margin-top: 12px; }
+ul { padding-left: 20px; display: grid; gap: 6px; }
+article p, article li { color: var(--ink-2); }
+strong { color: var(--ink); font-weight: 600; }
+.callout { background: #fff2f0; border: 1px solid #ffd6d0; border-radius: 18px; padding: 20px 22px; margin-bottom: 16px; }
+.callout strong { color: #b42318; }
+.services { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 14px; }
+.services div { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 14.5px; color: var(--ink-2); }
+.services b { display: block; color: var(--ink); font-weight: 600; }
+footer { border-top: 1px solid var(--line); padding: 34px 0 44px; color: var(--muted); font-size: 14px; }
+.foot { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; }
+.foot nav { display: flex; gap: 22px; }
+.foot a { text-decoration: none; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; gap: 10px; } .toc { position: static; } .toc ol { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<header class="site-header" id="site-header">
-  <div class="nav-wrap">
-    <a href="index.html" class="logo">
-      Meditrack<span class="logo-dot"></span>
-    </a>
-    <a href="index.html" class="back-btn">← Back to Home</a>
-  </div>
+<header class="nav" aria-label="Main">
+  <a class="logo" href="index.html">MediTrack<i>.</i></a>
+  <a class="back" href="index.html">← Home</a>
 </header>
 
-<!-- PAGE HERO -->
-<div class="page-hero">
-  <div class="page-hero-inner">
-    <div class="page-eyebrow"><span>Legal</span></div>
-    <h1 class="page-h1">Terms &amp; Conditions</h1>
-    <div class="page-meta">
-      <span>📅 Effective: June 7, 2026</span>
-      <span>🔄 Last updated: June 7, 2026</span>
-    </div>
-  </div>
-</div>
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Legal</span>
+    <h1>Terms &amp; Conditions</h1>
+    <p class="meta">Effective and last updated: 23 October 2026</p>
+  </header>
 
-<!-- TABLE OF CONTENTS -->
-<div class="toc-bar">
-  <div class="toc-inner">
-    <div class="toc-label">On this page</div>
-    <ul class="toc-list">
-      <li><a href="#intro">1. Introduction</a></li>
-      <li><a href="#description">2. Description of Service</a></li>
-      <li><a href="#medical">3. Medical Disclaimer</a></li>
-      <li><a href="#eligibility">4. Eligibility</a></li>
-      <li><a href="#accounts">5. User Accounts</a></li>
-      <li><a href="#data">6. User Data &amp; Privacy</a></li>
-      <li><a href="#content">7. Uploaded Content</a></li>
-      <li><a href="#use">8. Acceptable Use</a></li>
-      <li><a href="#opensource">9. Open Source</a></li>
-      <li><a href="#ip">10. Intellectual Property</a></li>
-      <li><a href="#ai">11. AI-Generated Content</a></li>
-      <li><a href="#liability">12. Limitation of Liability</a></li>
-      <li><a href="#indemnification">13. Indemnification</a></li>
-      <li><a href="#availability">14. Service Availability</a></li>
-      <li><a href="#changes">15. Changes to These Terms</a></li>
-      <li><a href="#law">16. Governing Law</a></li>
-      <li><a href="#contact">17. Contact</a></li>
-      <li><a href="#severability">18. Severability</a></li>
-    </ul>
-  </div>
-</div>
+  <div class="layout">
+    <nav class="toc" aria-label="On this page">
+      <ol>
+        <li><a href="#about">1. About these terms</a></li>
+        <li><a href="#service">2. What MediTrack does</a></li>
+        <li><a href="#medical">3. Medical disclaimer</a></li>
+        <li><a href="#eligibility">4. Who can use MediTrack</a></li>
+        <li><a href="#account">5. Your account</a></li>
+        <li><a href="#calls">6. Phone calls</a></li>
+        <li><a href="#whatsapp">7. WhatsApp</a></li>
+        <li><a href="#data">8. Your data and privacy</a></li>
+        <li><a href="#uploads">9. Your reports</a></li>
+        <li><a href="#use">10. Acceptable use</a></li>
+        <li><a href="#ai">11. AI-generated content</a></li>
+        <li><a href="#ip">12. Open source and brand</a></li>
+        <li><a href="#liability">13. Limitation of liability</a></li>
+        <li><a href="#indemnity">14. Indemnification</a></li>
+        <li><a href="#availability">15. Availability</a></li>
+        <li><a href="#changes">16. Changes</a></li>
+        <li><a href="#law">17. Governing law</a></li>
+        <li><a href="#contact">18. Contact</a></li>
+      </ol>
+    </nav>
 
-<!-- BODY -->
-<div class="terms-body">
-  <div class="terms-inner">
+    <article>
+      <section id="about">
+        <h2><span>1</span>About these terms</h2>
+        <p>MediTrack ("MediTrack", "we", "us") is developed and maintained by Kabir Gupta. These terms apply whenever you use MediTrack — on the website (meditrack.in), in the web app (ui.meditrack.in), on WhatsApp or on a phone call. By using MediTrack you agree to them. If you don't agree, please don't use MediTrack.</p>
+      </section>
 
-    <!-- 1 -->
-    <div class="tc-section" id="intro">
-      <span class="tc-num">Section 01</span>
-      <h2 class="tc-h2">Introduction and Acceptance</h2>
-      <p>Welcome to MediTrack ("the Service"), an open-source AI-powered medical report analysis platform developed and maintained by Kabir Gupta ("Developer", "we", "us", or "our"). MediTrack is made available at <strong>meditrack.in</strong> and <strong>ui.meditrack.in</strong>.</p>
-      <p>By accessing or using MediTrack, you ("User", "you") agree to be bound by these Terms and Conditions ("Terms"). If you do not agree to these Terms, please do not use the Service.</p>
-      <p>MediTrack is an open-source project. The source code is available publicly and is governed by its respective open-source license. These Terms govern your use of the hosted Service, not the source code itself.</p>
-    </div>
-
-    <!-- 2 -->
-    <div class="tc-section" id="description">
-      <span class="tc-num">Section 02</span>
-      <h2 class="tc-h2">Description of Service</h2>
-      <p>MediTrack is an AI-powered tool that allows users to:</p>
-      <ul class="tc-list">
-        <li>Upload medical laboratory reports in PDF, JPG, or PNG format</li>
-        <li>Receive simplified plain-language explanations of report values</li>
-        <li>Interact with their reports via text and voice conversation in English and Hindi</li>
-        <li>Generate short Hindi video summaries of their reports</li>
-        <li>Access basic health calculators for BMI, daily calories, and VO2 max estimation</li>
-        <li>Track their medical report history over time</li>
-      </ul>
-      <p>MediTrack is designed to help users understand their medical reports more easily. It is <strong>not</strong> a medical service, diagnostic tool, or substitute for professional medical advice.</p>
-    </div>
-
-    <!-- 3 -->
-    <div class="tc-section" id="medical">
-      <span class="tc-num">Section 03</span>
-      <h2 class="tc-h2">Medical Disclaimer</h2>
-      <div class="important-banner">
-        <strong>⚠️ Most Important Section — Please Read Carefully</strong>
-        <p>MediTrack is not a medical device, medical service, or healthcare provider. Nothing on MediTrack constitutes medical advice, diagnosis, treatment, or a doctor-patient relationship.</p>
-      </div>
-      <p>Specifically:</p>
-      <ul class="tc-list">
-        <li>MediTrack does not diagnose any condition, disease, or disorder</li>
-        <li>MediTrack does not recommend medications, dosages, or treatments</li>
-        <li>MediTrack does not replace consultation with a qualified medical professional</li>
-        <li>AI-generated summaries and explanations are for informational and educational purposes only</li>
-        <li>All abnormal values shown by MediTrack should be discussed with a qualified doctor</li>
-      </ul>
-      <div class="tc-callout">
-        <p>In the event of a medical emergency, call emergency services immediately — do not rely on MediTrack.</p>
-      </div>
-      <p>The information provided by MediTrack is generated by artificial intelligence and may contain errors, omissions, or inaccuracies. Always consult a licensed medical professional for any health concerns.</p>
-      <p>By using MediTrack, you acknowledge that you understand and accept these limitations.</p>
-    </div>
-
-    <!-- 4 -->
-    <div class="tc-section" id="eligibility">
-      <span class="tc-num">Section 04</span>
-      <h2 class="tc-h2">Eligibility</h2>
-      <p>To use MediTrack you must:</p>
-      <ul class="tc-list">
-        <li>Be at least 18 years of age</li>
-        <li>Have a valid Indian mobile phone number (+91) for authentication</li>
-        <li>Have the legal capacity to enter into these Terms in your jurisdiction</li>
-      </ul>
-      <p>MediTrack is currently designed and optimised for users in India. Use from outside India is permitted but certain features such as OTP delivery may not function correctly.</p>
-    </div>
-
-    <!-- 5 -->
-    <div class="tc-section" id="accounts">
-      <span class="tc-num">Section 05</span>
-      <h2 class="tc-h2">User Accounts and Authentication</h2>
-      <p>MediTrack uses phone number-based authentication. Your phone number is your unique identifier. You are responsible for:</p>
-      <ul class="tc-list">
-        <li>Maintaining the confidentiality of your account</li>
-        <li>All activity that occurs under your account</li>
-        <li>Notifying us immediately of any unauthorised use</li>
-      </ul>
-      <p>We reserve the right to terminate accounts that violate these Terms or are used for fraudulent purposes.</p>
-    </div>
-
-    <!-- 6 -->
-    <div class="tc-section" id="data">
-      <span class="tc-num">Section 06</span>
-      <h2 class="tc-h2">User Data and Privacy</h2>
-
-      <div class="tc-sub">
-        <div class="tc-sub-h">6.1 Data We Collect</div>
-        <p>We collect your phone number, name (if provided), language preference, uploaded medical reports, report analysis results, and chat history.</p>
-      </div>
-
-      <div class="tc-sub">
-        <div class="tc-sub-h">6.2 How We Use Your Data</div>
-        <p>Your data is used solely to provide the Service. We do not sell your data to third parties. We do not use your medical data to train AI models.</p>
-      </div>
-
-      <div class="tc-sub">
-        <div class="tc-sub-h">6.3 Data Storage</div>
-        <p>Your data is stored securely using Supabase (PostgreSQL database and file storage). Files are stored in encrypted buckets. Data is transmitted over HTTPS at all times.</p>
-      </div>
-
-      <div class="tc-sub">
-        <div class="tc-sub-h">6.4 Data Retention and Deletion</div>
-        <p>You may request deletion of your account and all associated data at any time by contacting us. Upon deletion, your reports, analyses, chat history, and generated videos will be permanently removed within 30 days.</p>
-      </div>
-
-      <div class="tc-sub">
-        <div class="tc-sub-h">6.5 Third-Party Services</div>
-        <p>MediTrack uses the following third-party services to operate. Each has its own privacy policy and terms. By using MediTrack you acknowledge that your data may be processed by these services as necessary to provide the Service.</p>
-        <div class="service-tags">
-          <span class="service-tag">OpenAI</span>
-          <span class="service-tag">Google Vision / Document AI</span>
-          <span class="service-tag">ElevenLabs</span>
-          <span class="service-tag">Twilio</span>
-          <span class="service-tag">Supabase</span>
-          <span class="service-tag">Cloudflare R2</span>
-          <span class="service-tag">Fly.io</span>
-        </div>
-      </div>
-
-      <div class="tc-sub">
-        <div class="tc-sub-h">6.6 Compliance</div>
-        <p>MediTrack is designed to comply with the Digital Personal Data Protection Act (DPDPA) 2023 of India. If you have concerns about how your data is processed please contact us.</p>
-      </div>
-    </div>
-
-    <!-- 7 -->
-    <div class="tc-section" id="content">
-      <span class="tc-num">Section 07</span>
-      <h2 class="tc-h2">Uploaded Content</h2>
-
-      <div class="tc-sub">
-        <div class="tc-sub-h">7.1 Your Ownership</div>
-        <p>You retain full ownership of all medical reports and data you upload to MediTrack.</p>
-      </div>
-
-      <div class="tc-sub">
-        <div class="tc-sub-h">7.2 License to Process</div>
-        <p>By uploading content you grant MediTrack a limited, non-exclusive license to process, store, and analyse your content solely for the purpose of providing the Service to you.</p>
-      </div>
-
-      <div class="tc-sub">
-        <div class="tc-sub-h">7.3 Prohibited Content</div>
-        <p>You must not upload content that:</p>
-        <ul class="tc-list">
-          <li>Does not belong to you or a person for whom you have legal authority to act</li>
-          <li>Contains malicious code, viruses, or harmful data</li>
-          <li>Violates any applicable law or regulation</li>
+      <section id="service">
+        <h2><span>2</span>What MediTrack does</h2>
+        <p>MediTrack helps you understand your medical lab reports in plain language. You can:</p>
+        <ul>
+          <li>Upload a lab report as a PDF, JPG or PNG — in the web app or by sending it on WhatsApp</li>
+          <li>Get a simple explanation of what each value means, which values are outside the normal range, and practical next steps</li>
+          <li>Ask questions by text or by voice — in the web app, on WhatsApp, or by calling MediTrack and talking to its AI voice assistant</li>
+          <li>Use MediTrack in Hindi, English, Marathi, Gujarati or Malayalam</li>
+          <li>Get a short Hindi video summary of a report</li>
+          <li>Keep your reports in one place and ask questions across all of them</li>
+          <li>Use basic health calculators (for example BMI and daily calories)</li>
         </ul>
-      </div>
+        <p>MediTrack is a health-literacy tool. It is not a medical service, a diagnostic tool, or a substitute for a doctor.</p>
+      </section>
 
-      <div class="tc-sub">
-        <div class="tc-sub-h">7.4 Accuracy</div>
-        <p>You are responsible for ensuring that reports you upload are genuine and unaltered. MediTrack is not responsible for errors caused by corrupted, unclear, or manipulated documents.</p>
-      </div>
-    </div>
+      <section id="medical">
+        <h2><span>3</span>Medical disclaimer</h2>
+        <div class="callout"><strong>Please read this carefully.</strong> MediTrack is not a doctor, a medical device or a healthcare provider. Nothing it says — in the app, on WhatsApp, on a call or in a video — is medical advice, a diagnosis or treatment, and using it does not create a doctor–patient relationship.</div>
+        <ul>
+          <li>MediTrack does not diagnose any condition, disease or disorder</li>
+          <li>MediTrack does not recommend medicines, doses or treatments</li>
+          <li>Explanations are for information and education only, and may contain mistakes</li>
+          <li>Please discuss every value outside the normal range — and any health concern — with a qualified doctor</li>
+        </ul>
+        <p><strong>In an emergency, call 112 (or 108 for an ambulance) immediately.</strong> Do not rely on MediTrack — including a MediTrack phone call — in an emergency.</p>
+      </section>
 
-    <!-- 8 -->
-    <div class="tc-section" id="use">
-      <span class="tc-num">Section 08</span>
-      <h2 class="tc-h2">Acceptable Use</h2>
-      <p>You agree not to:</p>
-      <ul class="tc-list">
-        <li>Use MediTrack for any unlawful purpose</li>
-        <li>Attempt to reverse engineer, hack, or compromise the Service</li>
-        <li>Use automated scripts or bots to access the Service</li>
-        <li>Upload false or fraudulent medical reports</li>
-        <li>Attempt to circumvent rate limits or security measures</li>
-        <li>Use the Service to provide medical advice to third parties as if it were professional advice</li>
-        <li>Resell or commercialise access to the Service without written permission</li>
-      </ul>
-    </div>
+      <section id="eligibility">
+        <h2><span>4</span>Who can use MediTrack</h2>
+        <ul>
+          <li>You must be at least 18 years old and able to agree to these terms.</li>
+          <li>You need a mobile number from India (+91) or the United States (+1) to sign in. Phone calls and WhatsApp are designed for Indian numbers.</li>
+          <li>You may use MediTrack for reports that belong to you, or to someone you are legally allowed to act for (for example, a parent who has asked for your help).</li>
+          <li>Video summaries are not made for reports of anyone under 18, or for pregnancy-related reports. Please discuss those with a specialist doctor.</li>
+        </ul>
+      </section>
 
-    <!-- 9 -->
-    <div class="tc-section" id="opensource">
-      <span class="tc-num">Section 09</span>
-      <h2 class="tc-h2">Open Source</h2>
-      <p>MediTrack is an open-source project. The source code is made available under its designated open-source license. The following apply:</p>
-      <ul class="tc-list">
-        <li>You are free to view, fork, and contribute to the source code under the terms of the applicable license</li>
-        <li>These Terms govern your use of the hosted Service at meditrack.in and ui.meditrack.in only</li>
-        <li>Running your own instance of MediTrack is permitted under the open-source license but the Developer provides no warranty or support for self-hosted instances</li>
-        <li>The open-source nature of the project does not grant you any rights to the MediTrack name, logo, or brand identity</li>
-      </ul>
-    </div>
+      <section id="account">
+        <h2><span>5</span>Your account</h2>
+        <p>Your mobile number is your MediTrack account. You sign in with a one-time code (OTP) sent by SMS. The same number links your account to WhatsApp and to phone calls. You are responsible for keeping access to your phone secure and for activity on your account, and you should tell us straight away if you think someone else has used it. We may suspend accounts that break these terms or are used for fraud.</p>
+      </section>
 
-    <!-- 10 -->
-    <div class="tc-section" id="ip">
-      <span class="tc-num">Section 10</span>
-      <h2 class="tc-h2">Intellectual Property</h2>
-      <p>All design elements, branding, logos, and non-code content of MediTrack are the property of Kabir Gupta and may not be reproduced without permission. The underlying source code is governed by the open-source license under which it is released.</p>
-    </div>
+      <section id="calls">
+        <h2><span>6</span>Phone calls</h2>
+        <p>You can talk to MediTrack's AI voice assistant over a phone call.</p>
+        <ul>
+          <li><strong>You are talking to an AI,</strong> not a person and not a doctor.</li>
+          <li>MediTrack recognises you by the mobile number registered to your account and uses your reports to answer your questions. Your reports are only discussed on calls with that number.</li>
+          <li><strong>Calls are recorded and transcribed.</strong> A summary of the call is saved to your account and may also be sent to you on WhatsApp.</li>
+          <li>Phone calls are not an emergency service. In an emergency, call 112 or 108.</li>
+          <li>Your mobile operator's normal charges may apply.</li>
+        </ul>
+      </section>
 
-    <!-- 11 -->
-    <div class="tc-section" id="ai">
-      <span class="tc-num">Section 11</span>
-      <h2 class="tc-h2">AI-Generated Content</h2>
-      <p>MediTrack uses artificial intelligence to generate report summaries, chat responses, and video narrations. You acknowledge that:</p>
-      <ul class="tc-list">
-        <li>AI-generated content may be inaccurate, incomplete, or misleading</li>
-        <li>The AI may misread values from uploaded reports due to OCR limitations</li>
-        <li>AI responses should never be treated as authoritative medical information</li>
-        <li>The Developer is not liable for decisions made based on AI-generated content</li>
-      </ul>
-    </div>
+      <section id="whatsapp">
+        <h2><span>7</span>WhatsApp</h2>
+        <p>If you message MediTrack on WhatsApp from the number registered to your account, we will read your messages, reports and voice notes in order to reply. Voice notes are transcribed, and replies may be sent as text, voice notes or videos. You can ask MediTrack to reply in a different language at any time. Your use of WhatsApp is also governed by WhatsApp's own terms and privacy policy. Messages from numbers without a MediTrack account are not processed beyond a reply asking you to sign up.</p>
+      </section>
 
-    <!-- 12 -->
-    <div class="tc-section" id="liability">
-      <span class="tc-num">Section 12</span>
-      <h2 class="tc-h2">Limitation of Liability</h2>
-      <p>To the maximum extent permitted by applicable law:</p>
-      <ul class="tc-list">
-        <li>MediTrack is provided "as is" without warranties of any kind, express or implied</li>
-        <li>The Developer is not liable for any indirect, incidental, special, or consequential damages arising from your use of the Service</li>
-        <li>The Developer is not liable for medical decisions made based on information provided by MediTrack</li>
-        <li>The Developer's total liability to you for any claim shall not exceed the amount you have paid to use the Service in the 12 months preceding the claim — as MediTrack is currently free to use, this amount is zero</li>
-      </ul>
-    </div>
+      <section id="data">
+        <h2><span>8</span>Your data and privacy</h2>
+        <h3>What we collect</h3>
+        <p>Your mobile number, your name (if you give it), your language preference, the reports you upload and the text read from them, MediTrack's explanations, your chat and WhatsApp messages, voice notes and their transcripts, phone call recordings, transcripts and summaries, and any videos made for you. If you request a video, you enter the patient's age; it is used only to check the video is appropriate and is not saved to your account.</p>
+        <h3>How we use it</h3>
+        <p>Only to provide MediTrack to you. <strong>We do not sell your data, and we do not use your medical data to train AI models.</strong></p>
+        <h3>How it is stored</h3>
+        <p>Data is sent over encrypted connections (HTTPS). Your reports are kept in private storage that only MediTrack's servers can read. Video summaries are stored on Cloudflare R2 and played through an unlisted link — anyone you share that link with can watch the video.</p>
+        <h3>Deleting your data</h3>
+        <p>When you delete a report in the app, the report file, its explanation, its chat history and its videos are deleted straight away. To delete your whole account and everything in it, contact us (see section 18) — we will do so within 30 days.</p>
+        <h3>Services that process your data</h3>
+        <p>MediTrack relies on the following providers. Each processes your data only as needed to run the feature it supports, under its own terms and privacy policy.</p>
+        <div class="services">
+          <div><b>OpenAI</b>Explanations and answers</div>
+          <div><b>Google Cloud Vision</b>Reading text from photos and scans</div>
+          <div><b>ElevenLabs</b>Voice replies and voice-note transcription</div>
+          <div><b>Sarvam AI</b>Phone calls</div>
+          <div><b>WhatsApp (Meta)</b>WhatsApp messages</div>
+          <div><b>Twilio</b>OTP text messages</div>
+          <div><b>Supabase</b>Database and report storage</div>
+          <div><b>Cloudflare R2</b>Video storage</div>
+          <div><b>Fly.io</b>Running MediTrack's servers</div>
+          <div><b>Netlify</b>Hosting this website</div>
+        </div>
+        <h3>Your rights</h3>
+        <p>MediTrack is designed to comply with India's Digital Personal Data Protection Act, 2023. You can ask to access, correct or delete your data at any time — see section 18.</p>
+      </section>
 
-    <!-- 13 -->
-    <div class="tc-section" id="indemnification">
-      <span class="tc-num">Section 13</span>
-      <h2 class="tc-h2">Indemnification</h2>
-      <p>You agree to indemnify and hold harmless Kabir Gupta and any contributors to the MediTrack project from any claims, damages, losses, or expenses arising from your use of the Service, your violation of these Terms, or your violation of any third-party rights.</p>
-    </div>
+      <section id="uploads">
+        <h2><span>9</span>Your reports</h2>
+        <ul>
+          <li><strong>You own your reports.</strong> You give MediTrack permission to store, read and process them only to provide the service to you.</li>
+          <li>Only upload reports that are genuine and unaltered, and that belong to you or to someone you are allowed to act for.</li>
+          <li>Don't upload anything containing malicious code or anything unlawful.</li>
+          <li>MediTrack is not responsible for mistakes caused by unclear, damaged or altered documents.</li>
+        </ul>
+      </section>
 
-    <!-- 14 -->
-    <div class="tc-section" id="availability">
-      <span class="tc-num">Section 14</span>
-      <h2 class="tc-h2">Service Availability</h2>
-      <p>MediTrack is provided on a best-effort basis. We do not guarantee:</p>
-      <ul class="tc-list">
-        <li>Uninterrupted availability of the Service</li>
-        <li>Accuracy of AI-generated content</li>
-        <li>Delivery of OTP messages</li>
-        <li>Successful generation of video summaries for all report types</li>
-      </ul>
-      <p>We reserve the right to modify, suspend, or discontinue the Service at any time without notice.</p>
-    </div>
+      <section id="use">
+        <h2><span>10</span>Acceptable use</h2>
+        <p>Please don't:</p>
+        <ul>
+          <li>Use MediTrack for anything unlawful, or to give medical advice to others as if it were professional advice</li>
+          <li>Upload false or fraudulent reports</li>
+          <li>Try to hack, overload, reverse engineer or get around MediTrack's security or usage limits</li>
+          <li>Use bots or automated scripts, or place calls or send messages in a way that abuses the service</li>
+          <li>Resell or commercialise access to MediTrack without written permission</li>
+        </ul>
+      </section>
 
-    <!-- 15 -->
-    <div class="tc-section" id="changes">
-      <span class="tc-num">Section 15</span>
-      <h2 class="tc-h2">Changes to These Terms</h2>
-      <p>We may update these Terms from time to time. We will notify users of material changes by updating the Effective Date at the top of this document. Continued use of the Service after changes constitutes acceptance of the updated Terms.</p>
-    </div>
+      <section id="ai">
+        <h2><span>11</span>AI-generated content</h2>
+        <p>MediTrack's explanations, chat replies, voice-note and phone-call answers, and video narrations are generated by AI. AI can be wrong or incomplete, and text can be misread from a report. Please treat everything MediTrack says as a starting point for a conversation with your doctor, never as authoritative medical information. We are not responsible for decisions made on the basis of AI-generated content.</p>
+      </section>
 
-    <!-- 16 -->
-    <div class="tc-section" id="law">
-      <span class="tc-num">Section 16</span>
-      <h2 class="tc-h2">Governing Law</h2>
-      <p>These Terms are governed by the laws of India. Any disputes arising from these Terms or your use of MediTrack shall be subject to the exclusive jurisdiction of the courts of India.</p>
-    </div>
+      <section id="ip">
+        <h2><span>12</span>Open source and brand</h2>
+        <p>MediTrack's source code is published under its open-source licence, which governs the code. These terms govern your use of the hosted MediTrack service only; we provide no warranty or support for copies you run yourself. The MediTrack name, logo, design and non-code content belong to Kabir Gupta and may not be reused without permission.</p>
+      </section>
 
-    <!-- 17 -->
-    <div class="tc-section" id="contact">
-      <span class="tc-num">Section 17</span>
-      <h2 class="tc-h2">Contact</h2>
-      <p>For any questions, concerns, or data deletion requests please contact:</p>
-      <p><strong>Kabir Gupta</strong><br>Developer, MediTrack<br>Website: <a href="https://meditrack.in" style="color:var(--lime-dk);text-decoration:underline">meditrack.in</a></p>
-    </div>
+      <section id="liability">
+        <h2><span>13</span>Limitation of liability</h2>
+        <p>To the fullest extent the law allows, MediTrack is provided "as is", without warranties of any kind. We are not liable for indirect, incidental, special or consequential damages, or for medical decisions made using information from MediTrack. Our total liability for any claim is limited to the amount you paid to use MediTrack in the 12 months before the claim — MediTrack is currently free, so that amount is zero.</p>
+      </section>
 
-    <!-- 18 -->
-    <div class="tc-section" id="severability">
-      <span class="tc-num">Section 18</span>
-      <h2 class="tc-h2">Severability</h2>
-      <p>If any provision of these Terms is found to be unenforceable, the remaining provisions will continue in full force and effect.</p>
-    </div>
+      <section id="indemnity">
+        <h2><span>14</span>Indemnification</h2>
+        <p>You agree to indemnify Kabir Gupta and MediTrack's contributors against claims, losses and expenses arising from your use of MediTrack, your breach of these terms, or your violation of anyone else's rights.</p>
+      </section>
 
-    <!-- closing note -->
-    <div style="margin-top:48px;padding-top:32px;border-top:1px solid var(--border)">
-      <p style="font-size:.9rem;color:var(--ink3);line-height:1.75;font-style:italic">MediTrack is a student-built open-source project. It is not affiliated with any hospital, laboratory, insurance company, or healthcare institution. Always consult a qualified doctor for medical advice.</p>
-    </div>
+      <section id="availability">
+        <h2><span>15</span>Availability</h2>
+        <p>MediTrack is provided on a best-effort basis. We don't guarantee that it will always be available, that every OTP, message or call will be delivered, or that a video can be made for every report. We may change, pause or stop any part of MediTrack at any time.</p>
+      </section>
 
+      <section id="changes">
+        <h2><span>16</span>Changes to these terms</h2>
+        <p>We may update these terms. When we do, we will change the date at the top of this page. Using MediTrack after an update means you accept the updated terms.</p>
+      </section>
+
+      <section id="law">
+        <h2><span>17</span>Governing law</h2>
+        <p>These terms are governed by the laws of India, and the courts of India have exclusive jurisdiction over any dispute about them or about MediTrack. If any part of these terms is found unenforceable, the rest remains in effect.</p>
+      </section>
+
+      <section id="contact">
+        <h2><span>18</span>Contact</h2>
+        <p>For questions, data requests or account deletion, contact Kabir Gupta, MediTrack — via <a href="https://www.meditrack.in">meditrack.in</a>.</p>
+        <p style="margin-top:22px;color:var(--muted)">MediTrack is an independent, student-built project. It is not affiliated with any hospital, laboratory, insurer or healthcare institution.</p>
+      </section>
+    </article>
   </div>
 </div>
 
-<!-- FOOTER -->
-<footer class="site-footer">
-  <div class="footer-inner">
-    <div class="footer-logo">Meditrack<span class="footer-logo-dot"></span></div>
-    <p class="footer-copy">© 2026 MediTrack · Made in India</p>
-    <div class="footer-links">
-      <a href="index.html">Home</a>
-      <a href="terms.html">Terms</a>
-    </div>
+<footer>
+  <div class="wrap foot">
+    <a class="logo" href="index.html">MediTrack<i>.</i></a>
+    <nav aria-label="Footer"><a href="index.html">Home</a><a href="https://ui.meditrack.in">Log in</a></nav>
   </div>
 </footer>
-
-<script>
-const hdr = document.getElementById('site-header');
-window.addEventListener('scroll', () => hdr.classList.toggle('scrolled', window.scrollY > 8), {passive:true});
-</script>
 </body>
 </html>
