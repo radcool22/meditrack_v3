@@ -218,18 +218,10 @@ All UI must work well on a 375px viewport; laptop is secondary but nonetheless s
 LLM output must avoid medical jargon — write for a Class 8 reading level
 Never log raw report content; only structured JSON after parsing
 
-## Known Bug — Video Generation (as of June 2026)
+## Video Generation
 
-The video generation overlay dismisses immediately after appearing on the dashboard.
-The generating indicator shows next to the report card briefly then disappears.
-No video is generated.
-
-Root cause suspected: useVideoStatus hook resets videoStatus to 'none' on mount,
-which triggers the dismiss condition before the generating state can persist.
-
-Key files:
-- client/src/pages/DashboardPage.jsx — activeVideoReportId controls overlay visibility
-- client/src/hooks/useVideoStatus.js — polling hook, suspect it resets on mount
-- server/controllers/videoController.js — generateVideo endpoint
-
-The overlay should ONLY dismiss when videoStatus === 'ready' or 'failed' or Cancel is clicked.
+- Trigger: `server/services/videoService.js` `scheduleVideoRender()` is the only path (website and WhatsApp). It validates the patient's age (asked in the UI / WhatsApp — never hard-coded), stops under-18s with `specialist_required`, and returns coded errors the client maps in `client/src/utils/videoErrors.js`.
+- Callback: `POST /api/videos/callback` only updates the report whose `video_job_id` matches — late callbacks from cancelled or superseded jobs are ignored.
+- A `generating` row older than 20 min (`STALE_GENERATING_MS`) is treated as lost and may be regenerated; the client polls for the same 20 min.
+- Deleting a report deletes its videos via the render service's `DELETE /videos/:reportId`.
+- Report files are downloaded with the service role (`downloadReportFile`), so the Supabase `reports` bucket can — and should — be private.

@@ -1,97 +1,40 @@
 import crypto from 'crypto'
 import supabase from '../services/supabase.js'
-import { buildRenderPayload } from '../services/renderPayloadMapper.js'
+import { scheduleVideoRender } from '../services/videoService.js'
 import { sendWhatsAppText, sendWhatsAppVideo } from '../services/whatsappService.js'
 
-const RENDER_SERVICE_URL = process.env.RENDER_SERVICE_URL || 'https://meditrack-render.fly.dev'
+// scheduleVideoRender error code → HTTP status. Codes go to the client as-is
+// so it can show the right message.
+const ERROR_STATUS = {
+  invalid_age:         400,
+  specialist_required: 422,
+  no_numeric_values:   422,
+  not_found:           404,
+  not_ready:           409,
+  already_generating:  409,
+  rate_limited:        429,
+  render_unavailable:  502,
+  render_error:        502,
+}
 
 export async function generateVideo(req, res) {
   const { id } = req.params
   const { userId } = req.user
-  const { ageYears } = req.body
 
-  const age = parseInt(ageYears, 10)
-  if (!age || age < 18) {
-    return res.status(400).json({ error: 'ageYears must be 18 or older' })
-  }
-
-  const { data: report, error: reportErr } = await supabase
-    .from('reports')
-    .select('id, report_title, report_date, structured_data, status, video_status, user_id')
-    .eq('id', id)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (reportErr || !report) {
-    return res.status(404).json({ error: 'Report not found' })
-  }
-
-  if (report.status !== 'done') {
-    return res.status(409).json({ error: 'Report must be fully analysed before generating a video' })
-  }
-
-  if (report.video_status === 'generating') {
-    return res.status(409).json({ error: 'Video generation already in progress', videoStatus: 'generating' })
-  }
-
-  const { data: user } = await supabase
-    .from('users')
-    .select('name')
-    .eq('id', userId)
-    .single()
-
-  const payload = buildRenderPayload({
-    report,
-    structuredData: report.structured_data ?? [],
-    user: user ?? {},
-    ageYears: age,
-  })
-
-  let renderRes
   try {
-    renderRes = await fetch(`${RENDER_SERVICE_URL}/render`, {
-      method: 'POST',
-      headers: {
-        Authorization:  `Bearer ${process.env.RENDER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
+    const { jobId } = await scheduleVideoRender(userId, id, req.body?.ageYears)
+    return res.json({ jobId, videoStatus: 'generating' })
   } catch (err) {
-    console.error('Render service unreachable:', err.message)
-    return res.status(502).json({ error: 'render_service_unavailable' })
-  }
-
-  if (renderRes.status === 429) {
-    const retryAfter = renderRes.headers.get('Retry-After') ?? '60'
-    return res.status(429).json({ error: 'rate_limited', retryAfterSec: parseInt(retryAfter, 10) })
-  }
-
-  if (!renderRes.ok) {
-    const body = await renderRes.json().catch(() => ({}))
-    console.error('Render service rejected request:', renderRes.status, body)
-    return res.status(502).json({ error: 'render_service_error', details: body })
-  }
-
-  const { jobId } = await renderRes.json()
-
-  const { error: updateErr } = await supabase
-    .from('reports')
-    .update({
-      video_status:       'generating',
-      video_job_id:       jobId,
-      video_requested_at: new Date().toISOString(),
-      video_url:          null,
-      video_error:        null,
+    const status = ERROR_STATUS[err.code]
+    if (!status) {
+      console.error('Generate video error:', err.message)
+      return res.status(500).json({ error: 'video_failed' })
+    }
+    return res.status(status).json({
+      error: err.code,
+      ...(err.retryAfterSec ? { retryAfterSec: err.retryAfterSec } : {}),
     })
-    .eq('id', id)
-
-  if (updateErr) {
-    console.error('Failed to persist video state:', updateErr.message)
-    return res.status(500).json({ error: 'Failed to save video state', details: updateErr.message })
   }
-
-  return res.json({ jobId, videoStatus: 'generating' })
 }
 
 export async function cancelVideo(req, res) {
@@ -109,6 +52,8 @@ export async function cancelVideo(req, res) {
     return res.status(404).json({ error: 'Report not found' })
   }
 
+  // Clearing video_job_id is what makes the cancel stick: the render may still
+  // finish, but its callback no longer matches and is ignored.
   const { error: updateErr } = await supabase
     .from('reports')
     .update({
@@ -148,7 +93,7 @@ export async function getVideoStatus(req, res) {
 
   const { data: report, error } = await supabase
     .from('reports')
-    .select('video_status, video_url, video_error')
+    .select('video_status, video_url, video_error, video_requested_at')
     .eq('id', id)
     .eq('user_id', userId)
     .maybeSingle()
@@ -169,9 +114,10 @@ export async function getVideoStatus(req, res) {
   }
 
   return res.json({
-    videoStatus: report.video_status,
+    videoStatus:      report.video_status,
     videoUrl,
-    videoError:  report.video_error,
+    videoError:       report.video_error,
+    videoRequestedAt: report.video_requested_at,
   })
 }
 
@@ -200,7 +146,7 @@ async function notifyWhatsAppVideoReady(reportId) {
   if (report.video_url) {
     try {
       await sendWhatsAppVideo(report.whatsapp_wa_id, report.video_url, caption)
-      console.log('[WhatsApp] video sent natively to', report.whatsapp_wa_id, '| reportId:', reportId)
+      console.log('[WhatsApp] video sent natively | reportId:', reportId)
       return
     } catch (err) {
       console.warn('[WhatsApp] native video send failed, falling back to text:', err.message)
@@ -213,7 +159,7 @@ async function notifyWhatsAppVideoReady(reportId) {
     ? `${title} का वीडियो तैयार है! यहाँ देखें: ${report.video_url ?? 'meditrack.in'}`
     : `${title} video is ready! Watch it here: ${report.video_url ?? 'meditrack.in'}`
   await sendWhatsAppText(report.whatsapp_wa_id, message)
-  console.log('[WhatsApp] video ready text notification sent to', report.whatsapp_wa_id, '| reportId:', reportId)
+  console.log('[WhatsApp] video ready text notification sent | reportId:', reportId)
 }
 
 export async function handleVideoCallback(req, res) {
@@ -229,40 +175,51 @@ export async function handleVideoCallback(req, res) {
     return res.status(401).json({ error: 'unauthorized' })
   }
 
-  const { reportId, status, videoUrl, completedAt, error: renderError } = req.body
+  const { jobId, reportId, status, videoUrl, completedAt, error: renderError } = req.body ?? {}
 
-  if (!reportId) {
-    return res.status(400).json({ error: 'reportId required' })
+  if (!reportId || !jobId) {
+    return res.status(400).json({ error: 'reportId and jobId required' })
   }
 
+  let update = null
   if (status === 'completed') {
-    const finalUrl = videoUrl?.includes('X-Amz-Signature') ? (toPublicUrl(videoUrl) ?? videoUrl) : videoUrl
-    await supabase
-      .from('reports')
-      .update({
-        video_status:       'ready',
-        video_url:          finalUrl,
-        video_error:        null,
-        video_generated_at: completedAt ?? new Date().toISOString(),
-      })
-      .eq('id', reportId)
+    update = {
+      video_status:       'ready',
+      video_url:          videoUrl?.includes('X-Amz-Signature') ? (toPublicUrl(videoUrl) ?? videoUrl) : videoUrl,
+      video_error:        null,
+      video_generated_at: completedAt ?? new Date().toISOString(),
+    }
   } else if (status === 'failed') {
-    await supabase
-      .from('reports')
-      .update({
-        video_status: 'failed',
-        video_error:  renderError ?? 'unknown_error',
-        video_url:    null,
-      })
-      .eq('id', reportId)
+    update = {
+      video_status: 'failed',
+      video_error:  renderError ?? 'unknown_error',
+      video_url:    null,
+    }
   }
 
-  res.json({ received: true })
+  // Only the job the report is currently waiting on may change it — a late
+  // callback from a cancelled or superseded job is acknowledged and ignored.
+  let applied = false
+  if (update) {
+    const { data, error } = await supabase
+      .from('reports')
+      .update(update)
+      .eq('id', reportId)
+      .eq('video_job_id', jobId)
+      .select('id')
+    if (error) {
+      console.error('Video callback update failed:', error.message)
+      return res.status(500).json({ error: 'update_failed' })
+    }
+    applied = (data?.length ?? 0) > 0
+  }
+
+  res.json({ received: true, applied })
 
   // ── WhatsApp video notification — isolated, fire-and-forget ─────────────
   // Fires AFTER the response is sent. Never throws, never blocks, never
   // affects the callback response above under any circumstances.
-  if (status === 'completed') {
+  if (status === 'completed' && applied) {
     notifyWhatsAppVideoReady(reportId).catch((err) => {
       console.error('[WhatsApp] video notification failed (non-fatal):', err.message)
     })

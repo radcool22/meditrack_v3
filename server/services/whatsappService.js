@@ -1,10 +1,53 @@
+import crypto from 'crypto'
 import supabase from './supabase.js'
-import { storeReportFile } from '../controllers/reportsController.js'
+import openai from './openai.js'
+import { storeReportFile, MIME_TO_TYPE } from '../controllers/reportsController.js'
 import { runAnalysisPipeline } from '../controllers/analysisController.js'
 import { scheduleVideoRender } from './videoService.js'
-import { getLanguage } from '../config/languages.js'
+import { getLanguage, isSupported } from '../config/languages.js'
 
 const GRAPH_API_BASE = 'https://graph.facebook.com/v21.0'
+
+let warnedNoAppSecret = false
+
+/**
+ * Verifies Meta's X-Hub-Signature-256 (HMAC-SHA256 of the raw body with the
+ * app secret). Without WHATSAPP_APP_SECRET set, verification is skipped with a
+ * one-time warning so the bot keeps working until the secret is configured.
+ */
+export function isValidWhatsAppSignature(rawBody, signatureHeader) {
+  const secret = process.env.WHATSAPP_APP_SECRET
+  if (!secret) {
+    if (!warnedNoAppSecret) {
+      console.warn('[WhatsApp] WHATSAPP_APP_SECRET not set — webhook signatures are NOT verified')
+      warnedNoAppSecret = true
+    }
+    return true
+  }
+  if (!rawBody || typeof signatureHeader !== 'string' || !signatureHeader.startsWith('sha256=')) return false
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest()
+  const given    = Buffer.from(signatureHeader.slice(7), 'hex')
+  return given.length === expected.length && crypto.timingSafeEqual(given, expected)
+}
+
+/** Translates an English text for the user's chosen language; English (or any failure) returns it unchanged. */
+export async function translateForUser(text, languageCode) {
+  if (!text || !isSupported(languageCode) || languageCode === 'en') return text
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      temperature: 0.2,
+      messages: [
+        { role: 'system', content: `Translate the user's text for a patient. Keep it simple, at a Class 8 reading level, and keep every number exactly as written. ${getLanguage(languageCode).promptInstruction} Reply with the translation only.` },
+        { role: 'user', content: text },
+      ],
+    })
+    return completion.choices[0].message.content?.trim() || text
+  } catch (err) {
+    console.error('[WhatsApp] translation failed, sending English:', err.message)
+    return text
+  }
+}
 
 export async function sendWhatsAppText(toNumber, messageText) {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
@@ -72,7 +115,7 @@ export async function transcribeWhatsAppAudio(mediaId, languageCode) {
   }
 
   const { text } = await res.json()
-  console.log('[WhatsApp] transcription result:', text?.slice(0, 100))
+  console.log('[WhatsApp] transcription done | chars:', text?.length ?? 0)
   return text?.trim() ?? ''
 }
 
@@ -240,6 +283,12 @@ export async function downloadWhatsAppMedia(mediaId) {
 }
 
 export async function processReportFromBuffer(userId, fileBuffer, mimeType, fileName) {
+  // 0. Same formats as the website — anything else would fail the DB check after
+  //    the file was already uploaded, leaving an orphan in storage.
+  if (!MIME_TO_TYPE[mimeType]) {
+    throw Object.assign(new Error(`Unsupported file type: ${mimeType}`), { code: 'unsupported_type' })
+  }
+
   // 1. Store file in Supabase Storage and create a pending report row
   const report = await storeReportFile(userId, fileBuffer, mimeType, fileName)
   console.log('[WhatsApp] report row created | id:', report.id)
@@ -248,7 +297,13 @@ export async function processReportFromBuffer(userId, fileBuffer, mimeType, file
   await supabase.from('reports').update({ status: 'processing' }).eq('id', report.id)
 
   // 3. Run OCR + GPT, passing the buffer we already have to skip re-downloading from storage
-  const result = await runAnalysisPipeline(report.id, report.file_type, report.file_url, fileBuffer)
+  let result
+  try {
+    result = await runAnalysisPipeline(report.id, report.file_type, report.file_url, fileBuffer)
+  } catch (err) {
+    await supabase.from('reports').update({ status: 'failed' }).eq('id', report.id)
+    throw err
+  }
   console.log('[WhatsApp] analysis complete | reportId:', report.id)
 
   return { report, ...result }
@@ -259,47 +314,6 @@ export async function upsertWhatsAppSession(waId, updates) {
     .from('whatsapp_sessions')
     .upsert({ wa_id: waId, ...updates, updated_at: new Date().toISOString() }, { onConflict: 'wa_id' })
   if (error) console.error('[WhatsApp] session upsert error:', error.message)
-}
-
-export async function getWhatsAppSession(waId) {
-  const { data, error } = await supabase
-    .from('whatsapp_sessions')
-    .select('user_id, current_report_id, state')
-    .eq('wa_id', waId)
-    .maybeSingle()
-  if (error) console.error('[WhatsApp] getWhatsAppSession error:', error.message)
-  return data ?? null
-}
-
-export async function triggerVideoFromWhatsApp(userId, waId) {
-  // 1. Find which report to generate video for — prefer session's current_report_id
-  const session = await getWhatsAppSession(waId)
-  let reportId  = session?.current_report_id
-
-  if (!reportId) {
-    const { data: latest } = await supabase
-      .from('reports')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('status', 'done')
-      .order('uploaded_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    reportId = latest?.id
-  }
-
-  if (!reportId) throw Object.assign(new Error('No report available'), { code: 'no_report' })
-
-  // 2. Stamp whatsapp_wa_id so the callback knows where to deliver the finished video
-  await supabase.from('reports').update({ whatsapp_wa_id: waId }).eq('id', reportId)
-
-  // 3. Trigger generation via the same render logic the website uses
-  await scheduleVideoRender(userId, reportId, 25)
-
-  // 4. Keep session up to date
-  await upsertWhatsAppSession(waId, { current_report_id: reportId, state: 'idle' })
-
-  return { reportId }
 }
 
 // ── Phase H: conversation state helpers ──────────────────────────────────────
@@ -350,54 +364,44 @@ export async function updateSessionState(waId, updates) {
   if (error) console.error('[WhatsApp] updateSessionState error:', error.message)
 }
 
-// Patterns that signal the user wants to switch to a given language.
-// Each entry has a Latin-script phrasing pattern (verb forms + bare language
-// name) and, for languages with their own script, a native-script word match
-// (matches the specific word for the language, e.g. "हिंदी" — not just any
-// character in that script, so Marathi's Devanagari doesn't collide with Hindi's).
-const LANGUAGE_SWITCH_PATTERNS = [
-  {
-    code: 'hi',
-    latin: /\b(?:hindi|speak\s+in\s+hindi|talk\s+in\s+hindi|reply\s+in\s+hindi|switch\s+to\s+hindi|in\s+hindi|hindi\s+me(?:in?|h)?|hindi\s+mein\s+baat\s+karo|hindi\s+please)\b/i,
-    native: /हिंदी|हिन्दी/,
-  },
-  {
-    code: 'mr',
-    latin: /\b(?:marathi|speak\s+in\s+marathi|talk\s+in\s+marathi|reply\s+in\s+marathi|switch\s+to\s+marathi|in\s+marathi|marathi\s+me(?:in?|h)?|marathi\s+mein\s+baat\s+karo|marathi\s+please)\b/i,
-    native: /मराठी/,
-  },
-  {
-    code: 'gu',
-    latin: /\b(?:gujarati|speak\s+in\s+gujarati|talk\s+in\s+gujarati|reply\s+in\s+gujarati|switch\s+to\s+gujarati|in\s+gujarati|gujarati\s+me(?:in?|h)?|gujarati\s+mein\s+baat\s+karo|gujarati\s+please)\b/i,
-    native: /ગુજરાતી/,
-  },
-  {
-    code: 'ml',
-    latin: /\b(?:malayalam|speak\s+in\s+malayalam|talk\s+in\s+malayalam|reply\s+in\s+malayalam|switch\s+to\s+malayalam|in\s+malayalam|malayalam\s+me(?:in?|h)?|malayalam\s+mein\s+baat\s+karo|malayalam\s+please)\b/i,
-    native: /മലയാളം/,
-  },
-  {
-    code: 'en',
-    latin: /\b(?:english|speak\s+in\s+english|talk\s+in\s+english|reply\s+in\s+english|switch\s+to\s+english|in\s+english|english\s+me(?:in?|h)?|english\s+please)\b/i,
-  },
+// Words for each language, Latin and native script. Order matters: non-English
+// first, so "hindi mein baat karo, english nahi" resolves to Hindi.
+const LANGUAGE_WORDS = [
+  { code: 'hi', latin: 'hindi',     native: ['हिंदी', 'हिन्दी'] },
+  { code: 'mr', latin: 'marathi',   native: ['मराठी'] },
+  { code: 'gu', latin: 'gujarati',  native: ['ગુજરાતી'] },
+  { code: 'ml', latin: 'malayalam', native: ['മലയാളം'] },
+  { code: 'en', latin: 'english',   native: [] },
 ]
 
-/**
- * Returns a supported language code, or null if no switch phrase is found.
- * Non-English languages are checked before English so a mixed phrase like
- * "hindi mein baat karo english nahi" still resolves to the intended language
- * (mirrors the original Hindi-before-English precedence, generalized to all 5).
- */
+// Only an explicit request switches language. Merely mentioning one ("my Hindi
+// report", "I'm from a Gujarati family") must not — the switch is saved to the
+// user's profile.
+function requestsLanguage(text, { latin, native }) {
+  const L = latin
+  const latinPatterns = [
+    // "reply in hindi", "switch to hindi", "change language to hindi", "explain my report in hindi"
+    new RegExp(String.raw`\b(?:speak|talk|reply|respond|answer|write|chat|explain|switch|change)\b(?:\s+\S+){0,3}?\s+(?:in|to)\s+${L}\b`, 'i'),
+    // "hindi mein baat karo", "hindi me batao"
+    new RegExp(String.raw`\b${L}\s+(?:me|mein|mai|main|men)\s+(?:baat|bol|bata|jawab|samjha|kah|likh|reply|explain)`, 'i'),
+    // "... in hindi" / "... in hindi please" at the end of the message
+    new RegExp(String.raw`\bin\s+${L}(?:\s+please)?\s*[.!?]*\s*$`, 'i'),
+    // the whole message is the language: "hindi", "hindi please", "in hindi"
+    new RegExp(String.raw`^\s*(?:in\s+)?${L}(?:\s+(?:please|pls|me|mein|language))?\s*[.!?]*\s*$`, 'i'),
+  ]
+  if (latinPatterns.some((re) => re.test(text))) return true
+  return native.some((word) =>
+    // "हिंदी", "हिंदी में" alone, or "हिंदी में बात करो / बताओ / समझाओ"
+    new RegExp(`^\\s*${word}\\s*(?:में|मे)?\\s*[।.!?]*\\s*$`).test(text) ||
+    new RegExp(`${word}\\s*(?:में|मे)\\s*(?:बात|बोल|बता|जवाब|समझा)`).test(text))
+}
+
+/** Returns a supported language code, or null if the message doesn't ask to switch. */
 export function detectLanguageSwitch(messageText) {
   if (!messageText) return null
   const t = messageText.trim()
-  for (const { code, latin, native } of LANGUAGE_SWITCH_PATTERNS) {
-    if (code === 'en') continue
-    if (latin.test(t) || (native && native.test(t))) return code
-  }
-  const english = LANGUAGE_SWITCH_PATTERNS.find((p) => p.code === 'en')
-  if (english.latin.test(t)) return 'en'
-  return null
+  const match = LANGUAGE_WORDS.find((lang) => requestsLanguage(t, lang))
+  return match?.code ?? null
 }
 
 const MAX_HISTORY_TURNS = 6
@@ -435,8 +439,9 @@ export async function getDoneReports(userId) {
  * Triggers video for an already-known reportId — no report lookup needed.
  * Used when the user has explicitly selected from a list.
  */
-export async function triggerVideoForReport(userId, reportId, waId) {
+export async function triggerVideoForReport(userId, reportId, waId, ageYears) {
+  await scheduleVideoRender(userId, reportId, ageYears)
+  // Stamped only once the render is scheduled, so the callback knows where to deliver.
   await supabase.from('reports').update({ whatsapp_wa_id: waId }).eq('id', reportId)
-  await scheduleVideoRender(userId, reportId, 25)
   await upsertWhatsAppSession(waId, { current_report_id: reportId, state: 'idle' })
 }

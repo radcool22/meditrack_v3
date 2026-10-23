@@ -5,11 +5,14 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useReports } from '../hooks/useReports'
 import { useVideoStatus } from '../hooks/useVideoStatus'
+import { requestVideo } from '../utils/videoApi'
+import { videoErrorMessage } from '../utils/videoErrors'
 import UploadZone from '../components/UploadZone'
 import ReportCard from '../components/ReportCard'
 import ChatPanel from '../components/ChatPanel'
 import LangToggle from '../components/LangToggle'
-import VideoPlayer from '../components/VideoPlayer'
+import VideoModal from '../components/VideoModal'
+import VideoAgeModal from '../components/VideoAgeModal'
 
 function formatReportDate(report) {
   if (report.report_date) {
@@ -20,9 +23,60 @@ function formatReportDate(report) {
   return 'Date unknown'
 }
 
+// Accounts created before the name step worked (or that skipped it) have no
+// name — ask once, inline, so greetings and videos can address them.
+function NamePrompt({ token, onSaved }) {
+  const [name, setName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSave(e) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      const { data } = await axios.patch(
+        '/api/auth/profile',
+        { name: name.trim() },
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      onSaved(data.user)
+    } catch {
+      setError('Could not save your name. Please try again.')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSave} className="bg-card border border-ink-200/60 rounded-2xl shadow-sm px-5 py-4">
+      <p className="text-[15px] font-semibold text-ink-900">What should we call you?</p>
+      <p className="text-[13px] text-ink-400 mt-0.5 mb-3">Used to greet you in chats and videos.</p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Your name"
+          maxLength={60}
+          className="flex-1 min-w-0 border-2 border-ink-200 focus:border-accent-500 rounded-xl px-4 py-2.5 text-[15px] font-medium text-ink-900 placeholder-ink-400 outline-none transition-colors bg-white"
+        />
+        <button
+          type="submit"
+          disabled={saving || !name.trim()}
+          className="bg-accent-500 hover:bg-accent-600 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl text-[14px] font-semibold shrink-0 transition-colors"
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+      {error && <p className="text-[13px] text-red-500 font-medium mt-2">{error}</p>}
+    </form>
+  )
+}
+
 export default function DashboardPage() {
   const { t } = useTranslation()
-  const { user, token, logout } = useAuth()
+  const { user, token, logout, updateUser } = useAuth()
   const { reports, loading, error, upload, deleteReport } = useReports()
 
   // Which report is currently being polled (one at a time)
@@ -30,15 +84,15 @@ export default function DashboardPage() {
   // Local overrides: { [reportId]: { status, url } } — takes precedence over DB state
   const [localVideoStates, setLocalVideoStates] = useState({})
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [ageForReport, setAgeForReport] = useState(null)   // report awaiting the age step
+  const [videoNotice, setVideoNotice] = useState('')        // last video error, shown above the list
   const [playVideoReportId, setPlayVideoReportId] = useState(null)
   // Per-report generate attempt counter — reset on page refresh
   const [generateAttempts, setGenerateAttempts] = useState({})
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [uploadingReportId, setUploadingReportId] = useState(null)
 
   const reportsRef = useRef(null)
 
-  const { videoStatus, videoUrl, notifyGenerating } = useVideoStatus(activeVideoReportId)
+  const { videoStatus, videoUrl, videoError, notifyGenerating } = useVideoStatus(activeVideoReportId)
 
   const hasDoneReports = reports.some((r) => r.status === 'done')
   const doneReports = reports.filter((r) => r.status === 'done')
@@ -50,10 +104,11 @@ export default function DashboardPage() {
       ...prev,
       [activeVideoReportId]: { status: videoStatus, url: videoUrl },
     }))
+    if (videoStatus === 'failed') setVideoNotice(videoErrorMessage(videoError))
     if (videoStatus === 'ready' || videoStatus === 'failed') {
       setActiveVideoReportId(null)
     }
-  }, [activeVideoReportId, videoStatus, videoUrl])
+  }, [activeVideoReportId, videoStatus, videoUrl, videoError])
 
   // Seed localVideoStates from the reports list on load (existing video state from DB)
   useEffect(() => {
@@ -70,39 +125,36 @@ export default function DashboardPage() {
     })
   }, [reports])
 
-  // Reset upload progress bar once the newly uploaded report finishes processing
-  useEffect(() => {
-    if (!uploadingReportId) return
-    const r = reports.find((r) => r.id === uploadingReportId)
-    if (r?.status === 'done' || r?.status === 'failed') {
-      setUploadProgress(0)
-      setUploadingReportId(null)
-    }
-  }, [reports, uploadingReportId])
-
   // Effective video state per report: local override > DB state
   function getEffectiveVideo(report) {
     if (localVideoStates[report.id]) return localVideoStates[report.id]
     return { status: report.video_status ?? 'none', url: report.video_url ?? null }
   }
 
-  async function handlePickerSelect(report) {
+  function handlePickerSelect(report) {
     setPickerOpen(false)
-    if ((generateAttempts[report.id] ?? 0) >= 3) return
+    setVideoNotice('')
+    if ((generateAttempts[report.id] ?? 0) >= 3) {
+      setVideoNotice('Too many attempts for this report. Please try again later.')
+      return
+    }
+    setAgeForReport(report)
+  }
+
+  async function handleAgeConfirm(ageYears) {
+    const report = ageForReport
+    setAgeForReport(null)
     setGenerateAttempts((prev) => ({ ...prev, [report.id]: (prev[report.id] ?? 0) + 1 }))
     setLocalVideoStates((prev) => ({ ...prev, [report.id]: { status: 'generating', url: null } }))
-    try {
-      await axios.post(
-        `/api/reports/${report.id}/generate-video`,
-        { ageYears: 25 },
-        { headers: { Authorization: `Bearer ${token}` } },
-      )
+
+    const result = await requestVideo(report.id, ageYears, token)
+    if (result.ok) {
       setActiveVideoReportId(report.id)
       notifyGenerating()
       reportsRef.current?.scrollIntoView({ behavior: 'smooth' })
-    } catch (err) {
-      console.error('Generate video failed:', err)
+    } else {
       setLocalVideoStates((prev) => { const n = { ...prev }; delete n[report.id]; return n })
+      setVideoNotice(videoErrorMessage(result.code))
     }
   }
 
@@ -126,6 +178,7 @@ export default function DashboardPage() {
             href="https://wa.me/919717628400?text=Hi"
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="Continue on WhatsApp"
             className="flex items-center gap-1.5 text-[14px] font-semibold px-3 py-2 rounded-xl border transition-colors hover:opacity-80"
             style={{ color: '#25D366', borderColor: '#25D366' }}
           >
@@ -147,47 +200,27 @@ export default function DashboardPage() {
 
       {/* ── Main content ───────────────────────────────────────── */}
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-8">
-        {user?.name && (
+        {user?.name ? (
           <div>
             <h2 className="text-3xl font-bold text-ink-900">
               {t('hello')}, {user.name} 👋
             </h2>
             <p className="text-[15px] text-ink-400 mt-1 font-medium">{t('health_dashboard')}</p>
           </div>
+        ) : (
+          user && <NamePrompt token={token} onSaved={updateUser} />
         )}
 
         <section id="upload-section">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-4">
             {t('upload_report_section')}
           </h2>
-          <UploadZone onUpload={async (file) => {
-            setUploadProgress(1)
-            try {
-              const report = await upload(file, setUploadProgress)
-              setUploadingReportId(report.id)
-              reportsRef.current?.scrollIntoView({ behavior: 'smooth' })
-            } catch {
-              setUploadProgress(0)
-            }
+          {/* UploadZone shows per-file progress and errors; each report card
+              shows its own spinner while analysis runs. */}
+          <UploadZone onUpload={async (file, onProgress) => {
+            await upload(file, onProgress)
+            reportsRef.current?.scrollIntoView({ behavior: 'smooth' })
           }} />
-          {uploadProgress > 0 && (
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[13px] font-medium text-ink-400">
-                  {uploadProgress === 100 ? 'Processing...' : 'Uploading...'}
-                </span>
-                <span className="text-[13px] font-semibold" style={{ color: 'rgb(52,120,247)' }}>
-                  {uploadProgress}%
-                </span>
-              </div>
-              <div className="w-full h-1.5 bg-ink-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-150"
-                  style={{ width: `${uploadProgress}%`, background: 'rgb(52,120,247)' }}
-                />
-              </div>
-            </div>
-          )}
         </section>
 
         {/* ── Generate Video card ─────────────────────────────── */}
@@ -205,12 +238,25 @@ export default function DashboardPage() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[15px] font-semibold text-ink-900">Generate Video Summary</p>
-            <p className="text-[13px] text-ink-400 mt-0.5">60-second Hindi explanation of any report</p>
+            <p className="text-[13px] text-ink-400 mt-0.5">A short Hindi video explaining any report</p>
           </div>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-ink-400 shrink-0">
             <path fillRule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
           </svg>
         </button>
+
+        {videoNotice && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 flex items-start justify-between gap-3">
+            <p className="text-[14px] font-medium text-red-700">{videoNotice}</p>
+            <button
+              onClick={() => setVideoNotice('')}
+              aria-label="Dismiss"
+              className="text-red-400 hover:text-red-700 text-[15px] font-bold leading-none shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* ── Ask About Reports ───────────────────────────────── */}
         <section>
@@ -287,7 +333,7 @@ export default function DashboardPage() {
             <h2 className="text-[17px] font-bold text-ink-900 mb-1">
               Choose a report to generate a video for
             </h2>
-            <p className="text-[13px] text-ink-400 mb-4">A 60-second Hindi summary will be created.</p>
+            <p className="text-[13px] text-ink-400 mb-4">A short Hindi video summary will be created.</p>
             <div className="space-y-2 max-h-[50vh] overflow-y-auto -mx-1 px-1">
               {doneReports.length === 0 ? (
                 <p className="text-center text-[15px] text-ink-400 py-6">
@@ -318,30 +364,18 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* ── Age step (pediatric safety gate) ───────────────────── */}
+      {ageForReport && (
+        <VideoAgeModal
+          reportTitle={ageForReport.report_title ?? ageForReport.file_name}
+          onConfirm={handleAgeConfirm}
+          onClose={() => setAgeForReport(null)}
+        />
+      )}
+
       {/* ── Video playback popup ───────────────────────────────── */}
-      {playVideoReportId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ background: 'rgba(0,0,0,0.85)' }}
-          onClick={() => setPlayVideoReportId(null)}
-        >
-          <div
-            className="relative w-full max-w-[360px]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close button */}
-            <button
-              onClick={() => setPlayVideoReportId(null)}
-              className="absolute -top-11 right-0 flex items-center gap-1.5 text-white/70 hover:text-white text-[14px] font-semibold transition-colors"
-            >
-              <span>Close</span>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-              </svg>
-            </button>
-            <VideoPlayer src={playingVideoUrl} />
-          </div>
-        </div>
+      {playVideoReportId && playingVideoUrl && (
+        <VideoModal src={playingVideoUrl} onClose={() => setPlayVideoReportId(null)} />
       )}
     </div>
   )

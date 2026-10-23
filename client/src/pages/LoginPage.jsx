@@ -16,7 +16,7 @@ const COUNTRY_CODES = [
 
 export default function LoginPage() {
   const { t } = useTranslation()
-  const { login, updateUser, token, loading: authLoading } = useAuth()
+  const { login, loading: authLoading } = useAuth()
   const navigate = useNavigate()
 
   // Redirect to dashboard if a valid (non-expired) token is already stored
@@ -34,7 +34,7 @@ export default function LoginPage() {
     }
   }, [authLoading])
 
-  const [mode, setMode] = useState('signup') // 'login' | 'signup'
+  const [mode, setMode] = useState('login') // 'login' | 'signup'
   const [countryCode, setCountryCode] = useState('+91')
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
@@ -47,6 +47,7 @@ export default function LoginPage() {
   const [nameLoading, setNameLoading] = useState(false)
   const [nameError, setNameError] = useState('')
   const [savedToken, setSavedToken] = useState(null)
+  const [savedUser, setSavedUser] = useState(null)
 
   // DOM ref on the <select> — always the true current value, no closure/timing issues
   const selectRef = useRef(null)
@@ -69,13 +70,19 @@ export default function LoginPage() {
     fullPhoneRef.current = fullNumber   // lock in the number for verify & resend
     setLoading(true)
     try {
-      await axios.post('/api/auth/send-otp', { phone_number: fullNumber, mode })
+      try {
+        await axios.post('/api/auth/send-otp', { phone_number: fullNumber, mode })
+      } catch (err) {
+        // Picked "Log in" for a new number (or "Sign up" for an existing one):
+        // the server says which mode fits — switch and send, no error shown.
+        const hint = err.response?.data?.hint
+        if (hint !== 'login' && hint !== 'signup') throw err
+        setMode(hint)
+        await axios.post('/api/auth/send-otp', { phone_number: fullNumber, mode: hint })
+      }
       setStep('otp')
     } catch (err) {
-      const data = err.response?.data
-      if (data?.hint === 'login') setMode('login')
-      if (data?.hint === 'signup') setMode('signup')
-      setError(data?.error || t('error_generic'))
+      setError(err.response?.data?.error || t('error_generic'))
     } finally {
       setLoading(false)
     }
@@ -104,11 +111,14 @@ export default function LoginPage() {
         phone_number: fullPhoneRef.current,   // always the number that received the OTP
         otp_code: otp,
       })
-      login(data.token, data.user)
       if (data.isNewUser) {
+        // Don't log in yet: setting the token makes PublicRoute redirect to the
+        // dashboard before the name screen can show. Log in once it's done.
         setSavedToken(data.token)
+        setSavedUser(data.user)
         setShowNameModal(true)
       } else {
+        login(data.token, data.user)
         navigate('/dashboard')
       }
     } catch (err) {
@@ -127,9 +137,9 @@ export default function LoginPage() {
       const { data } = await axios.patch(
         '/api/auth/profile',
         { name: nameInput.trim() },
-        { headers: { Authorization: `Bearer ${savedToken || token}` } }
+        { headers: { Authorization: `Bearer ${savedToken}` } }
       )
-      updateUser(data.user)
+      login(savedToken, data.user)
       navigate('/dashboard')
     } catch (err) {
       setNameError(err.response?.data?.error || t('error_generic'))
@@ -228,7 +238,7 @@ export default function LoginPage() {
 
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-5">
-            <p className="text-[15px] text-ink-400 font-medium">{t('otp_sent', { phone })}</p>
+            <p className="text-[15px] text-ink-400 font-medium">{t('otp_sent', { phone: fullPhoneRef.current })}</p>
             <div>
               <label className="block text-[13px] font-semibold text-ink-600 uppercase tracking-widest mb-2">
                 {t('otp_label')}
@@ -325,7 +335,7 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => { login(savedToken, savedUser); navigate('/dashboard') }}
                 className="w-full text-[14px] font-medium text-ink-400 hover:text-ink-900 transition-colors py-1"
               >
                 {t('skip_for_now')}

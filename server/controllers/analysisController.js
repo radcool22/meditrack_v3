@@ -2,13 +2,12 @@ import supabase from '../services/supabase.js'
 import openai from '../services/openai.js'
 import { extractText } from '../services/visionOcr.js'
 import { buildStructureAndAnalysePrompt } from '../services/prompts/ocr.js'
+import { downloadReportFile } from './reportsController.js'
 
-async function fetchBuffer(url) {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`)
-  const arrayBuffer = await res.arrayBuffer()
-  return Buffer.from(arrayBuffer)
-}
+// Reports this server process is analysing right now. A DB row stuck at
+// 'processing' that isn't in here was orphaned by a crash/restart and may be
+// re-run (single Fly machine, so process memory is the source of truth).
+const inFlight = new Set()
 
 async function runGptAnalysis(prompt) {
   const completion = await openai.chat.completions.create({
@@ -21,7 +20,16 @@ async function runGptAnalysis(prompt) {
 }
 
 export async function runAnalysisPipeline(reportId, fileType, fileUrl, buffer = null) {
-  const fileBuffer = buffer ?? await fetchBuffer(fileUrl)
+  inFlight.add(reportId)
+  try {
+    return await analyse(reportId, fileType, fileUrl, buffer)
+  } finally {
+    inFlight.delete(reportId)
+  }
+}
+
+async function analyse(reportId, fileType, fileUrl, buffer) {
+  const fileBuffer = buffer ?? await downloadReportFile(fileUrl)
   const rawText    = await extractText(fileBuffer, fileType)
 
   await supabase.from('reports').update({ ocr_raw_text: rawText }).eq('id', reportId)
@@ -37,7 +45,7 @@ export async function runAnalysisPipeline(reportId, fileType, fileUrl, buffer = 
 
   await supabase
     .from('reports')
-    .update({ structured_data: testsArray, report_date: reportDate, report_title: reportTitle, status: 'done' })
+    .update({ structured_data: testsArray, report_date: reportDate, report_title: reportTitle })
     .eq('id', reportId)
 
   const { data: analysisRow, error: analysisErr } = await supabase
@@ -53,6 +61,10 @@ export async function runAnalysisPipeline(reportId, fileType, fileUrl, buffer = 
     .single()
 
   if (analysisErr) throw new Error(`Analysis insert failed: ${analysisErr.message}`)
+
+  // 'done' only once the analysis row exists — 'done' with no analysis would
+  // leave the report page blank (no spinner, no error).
+  await supabase.from('reports').update({ status: 'done' }).eq('id', reportId)
 
   return { analysis: analysisRow, report_title: reportTitle, report_date: reportDate }
 }
@@ -73,7 +85,9 @@ export async function runAnalysis(req, res) {
     return res.status(404).json({ error: 'Report not found' })
   }
 
-  if (report.status === 'processing') {
+  // Checked against this process, not the DB row: two requests arriving
+  // together both read the row before either marks it 'processing'.
+  if (inFlight.has(reportId)) {
     return res.status(409).json({ error: 'Analysis already in progress' })
   }
 
@@ -97,7 +111,9 @@ export async function runAnalysis(req, res) {
     // No analysis row yet — fall through to generate
   }
 
-  // 2. Mark as processing
+  // 2. Mark as processing — claim it in-process first so a second request
+  //    arriving during the DB write sees it as in flight.
+  inFlight.add(reportId)
   await supabase
     .from('reports')
     .update({ status: 'processing' })
@@ -144,5 +160,11 @@ export async function getAnalysis(req, res) {
     })
   }
 
-  return res.json({ status: 'pending', analysis: null, report_title: null, report_date: null })
+  // The report's real status: 'processing' must not read as 'pending', or the
+  // client starts a second analysis, gets a 409 and shows "analysis failed".
+  // An orphaned 'processing' (see inFlight), or a 'done' row whose analysis
+  // never got saved, reads as 'pending' so the client re-runs it.
+  const orphaned = (report.status === 'processing' && !inFlight.has(reportId)) || report.status === 'done'
+  const status = orphaned ? 'pending' : report.status
+  return res.json({ status, analysis: null, report_title: null, report_date: null })
 }

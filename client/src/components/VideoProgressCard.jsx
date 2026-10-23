@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import VideoModal from './VideoModal'
 import axios from '../utils/axios'
+import { VIDEO_STARTED_EVENT, videoErrorMessage } from '../utils/videoErrors'
 
 const STAGES = [
   'Reading your report',
@@ -11,7 +12,9 @@ const STAGES = [
   'Rendering video frames',
   'Finalising your video',
 ]
-const STAGE_SECS = 30 // seconds each of stages 0-3
+const STAGE_SECS = 45 // seconds each of stages 0-3 (renders run on a shared CPU)
+// Matches the server's stale window: past this the render's callback was lost.
+const GIVE_UP_SECS = 20 * 60
 
 export default function VideoProgressCard() {
   const { token } = useAuth()
@@ -21,6 +24,7 @@ export default function VideoProgressCard() {
   const [visible,    setVisible]    = useState(false)
   const [minimized,  setMinimized]  = useState(false)
   const [status,     setStatus]     = useState('generating') // 'generating' | 'ready' | 'failed'
+  const [errorCode,  setErrorCode]  = useState(null)
   const [videoUrl,   setVideoUrl]   = useState(null)
   const [reportId,   setReportId]   = useState(null)
   const [elapsed,    setElapsed]    = useState(0) // seconds since card activated
@@ -38,11 +42,15 @@ export default function VideoProgressCard() {
   const visibleRef = useRef(false)
   useEffect(() => { visibleRef.current = visible }, [visible])
 
-  function activate(id) {
+  // requestedAt: when the render was requested, so a card found after a page
+  // reload continues from the real elapsed time instead of restarting at 0.
+  function activate(id, requestedAt = null) {
     visibleRef.current = true // guard immediately — don't wait for state flush
     setReportId(id)
     setStatus('generating')
-    setElapsed(0)
+    setErrorCode(null)
+    const since = requestedAt ? Math.floor((Date.now() - new Date(requestedAt).getTime()) / 1000) : 0
+    setElapsed(Math.max(0, since))
     setMinimized(window.innerWidth < 640) // collapsed by default on mobile
     setVideoUrl(null)
     setVisible(true)
@@ -53,11 +61,14 @@ export default function VideoProgressCard() {
     setVisible(false)
     setReportId(null)
     setStatus('generating')
+    setErrorCode(null)
     setElapsed(0)
     setVideoUrl(null)
   }
 
-  // ── Discovery poll ──────────────────────────────────────────────────────────
+  // ── Discovery ───────────────────────────────────────────────────────────────
+  // Once per login (finds a render still running after a reload), then on the
+  // event fired whenever a render is started — no constant polling.
   useEffect(() => {
     if (!token) return
     async function discover() {
@@ -67,12 +78,15 @@ export default function VideoProgressCard() {
           headers: { Authorization: `Bearer ${token}` },
         })
         const gen = data.reports?.find(r => r.video_status === 'generating')
-        if (gen) activate(gen.id)
+        if (gen) activate(gen.id, gen.video_requested_at)
       } catch {}
     }
+    function onStarted(e) {
+      if (e.detail?.reportId) activate(e.detail.reportId)
+    }
     discover()
-    const id = setInterval(discover, 5000)
-    return () => clearInterval(id)
+    window.addEventListener(VIDEO_STARTED_EVENT, onStarted)
+    return () => window.removeEventListener(VIDEO_STARTED_EVENT, onStarted)
   }, [token])
 
   // ── Status poll ─────────────────────────────────────────────────────────────
@@ -89,6 +103,7 @@ export default function VideoProgressCard() {
           setVideoUrl(data.videoUrl ?? null)
         } else if (data.videoStatus === 'failed') {
           setStatus('failed')
+          setErrorCode(data.videoError ?? null)
         } else if (!data.videoStatus || data.videoStatus === 'none') {
           dismiss()
         }
@@ -104,6 +119,21 @@ export default function VideoProgressCard() {
     const id = setInterval(() => setElapsed(s => s + 1), 1000)
     return () => clearInterval(id)
   }, [visible, status])
+
+  // ── Open the card when there's something to act on ──────────────────────────
+  // On mobile it starts collapsed, and the expand control is hidden once done —
+  // without this, "Watch Now" / "Try Again" would be unreachable on phones.
+  useEffect(() => {
+    if (status === 'ready' || status === 'failed') setMinimized(false)
+  }, [status])
+
+  // ── Give up instead of spinning forever ─────────────────────────────────────
+  useEffect(() => {
+    if (status === 'generating' && elapsed >= GIVE_UP_SECS) {
+      setStatus('failed')
+      setErrorCode('timeout')
+    }
+  }, [elapsed, status])
 
   if (!visible) return null
 
@@ -189,8 +219,12 @@ export default function VideoProgressCard() {
                   Watch Now
                 </button>
               ) : (
+                <div>
+                <p style={{ fontSize: 13, color: '#4b5563', lineHeight: 1.45, marginBottom: 10 }}>
+                  {videoErrorMessage(errorCode)}
+                </p>
                 <button
-                  onClick={() => { navigate('/dashboard'); dismiss() }}
+                  onClick={() => { navigate(`/report/${reportId}`); dismiss() }}
                   style={{
                     width: '100%', background: '#dc2626', color: 'white',
                     border: 'none', borderRadius: 10, padding: '10px 0',
@@ -199,6 +233,7 @@ export default function VideoProgressCard() {
                 >
                   Try Again
                 </button>
+                </div>
               )
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

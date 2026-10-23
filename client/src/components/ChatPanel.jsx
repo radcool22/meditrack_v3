@@ -5,6 +5,7 @@ import { useCombinedChat } from '../hooks/useCombinedChat'
 import { useReportChat } from '../hooks/useReportChat'
 import { useVoice } from '../hooks/useVoice'
 import { useLanguage } from '../context/LanguageContext'
+import { getLanguage } from '../config/languages'
 
 // ── Format message content with bullet point support ─────────────────
 function formatContent(text) {
@@ -76,7 +77,8 @@ function WaveformBars() {
 export default function ChatPanel({ reportId, isReportChat = false, greetingMessage = null }) {
   const { t } = useTranslation()
   const { language } = useLanguage()
-  const voiceLang = language === 'hi' ? 'hi-IN' : 'en-IN'
+  // Speech recognition + reply voice follow the chosen language (all five, not just en/hi)
+  const voiceLang = getLanguage(language).browserSttLocale
 
   const [mode, setMode] = useState('voice') // 'text' | 'voice'
   const [input, setInput] = useState('')

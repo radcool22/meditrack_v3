@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { friendly } from '../utils/friendlyError'
+import { getAudioContext } from '../utils/sharedAudio'
 
 /**
  * Voice mode.
@@ -39,11 +40,15 @@ export function useVoice() {
       return
     }
     try {
-      if (!audioCtxRef.current) {
+      // Prefer the context unlocked inside a tap (sharedAudio.unlockAudio) —
+      // iOS Safari keeps a context created outside a gesture silent forever.
+      const shared = getAudioContext()
+      if (shared && shared.state !== 'closed') {
+        audioCtxRef.current = shared
+      } else if (!audioCtxRef.current) {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
-      } else if (audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume()
       }
+      if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume()
     } catch (e) {
       console.warn('[TTS] Could not create AudioContext:', e)
     }
@@ -201,7 +206,9 @@ export function useVoice() {
       audio.play().catch(() => setVoiceState('ready'))
     }
 
-    ws.onopen    = () => ws.send(JSON.stringify({ type: 'speak', text, lang }))
+    // The server only speaks for logged-in users (it spends ElevenLabs credits).
+    const token = localStorage.getItem('mt_token')
+    ws.onopen    = () => ws.send(JSON.stringify({ type: 'speak', text, lang, token }))
     ws.onmessage = (e) => {
       if (e.data instanceof ArrayBuffer) { chunks.push(new Uint8Array(e.data)); return }
       let msg

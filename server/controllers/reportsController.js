@@ -1,9 +1,28 @@
 import supabase from '../services/supabase.js'
+import { deleteRenderedVideos } from '../services/videoService.js'
 
-const MIME_TO_TYPE = {
+export const MIME_TO_TYPE = {
   'image/jpeg': 'jpg',
   'image/png':  'png',
   'application/pdf': 'pdf',
+}
+
+// file_url holds the object's public-style URL; the storage path is its tail.
+function storagePathFromUrl(fileUrl) {
+  const prefix = `${process.env.SUPABASE_URL}/storage/v1/object/public/${process.env.SUPABASE_STORAGE_BUCKET}/`
+  return fileUrl?.startsWith(prefix) ? decodeURIComponent(fileUrl.slice(prefix.length)) : null
+}
+
+// Downloads with the service role, so it works when the bucket is private
+// (medical reports must not be readable by anyone holding the URL).
+export async function downloadReportFile(fileUrl) {
+  const storagePath = storagePathFromUrl(fileUrl)
+  if (!storagePath) throw new Error('Report file location is not recognised')
+  const { data, error } = await supabase.storage
+    .from(process.env.SUPABASE_STORAGE_BUCKET)
+    .download(storagePath)
+  if (error) throw new Error(`Failed to download report file: ${error.message}`)
+  return Buffer.from(await data.arrayBuffer())
 }
 
 export async function storeReportFile(userId, buffer, mimeType, fileName) {
@@ -61,9 +80,7 @@ const REPORTS_COLUMNS = [
 ].join(', ')
 
 export async function getReports(req, res) {
-  console.log('getReports called for userId:', req.user?.userId)
   const { userId } = req.user
-  console.log('[getReports] called — userId:', userId)
 
   async function querySupabase() {
     return supabase
@@ -75,27 +92,23 @@ export async function getReports(req, res) {
 
   try {
     let { data, error } = await querySupabase()
-    console.log('Supabase response:', JSON.stringify(data), 'Error:', JSON.stringify(error))
-    console.log('[getReports] attempt 1 — error:', error?.message ?? 'none', '| rows:', data?.length ?? 'null')
 
     if (error) {
       console.warn('[getReports] first attempt failed, retrying after 500ms:', { message: error.message, details: error.details, hint: error.hint, code: error.code })
       await new Promise((r) => setTimeout(r, 500))
       ;({ data, error } = await querySupabase())
-      console.log('[getReports] attempt 2 — error:', error?.message ?? 'none', '| rows:', data?.length ?? 'null')
     }
 
+    // A failure must not look like "you have no reports" — the client shows an error.
     if (error) {
-      console.error('[getReports] both attempts failed — full error:', JSON.stringify(error))
-      return res.json({ reports: [] })
+      console.error('[getReports] both attempts failed:', error.message)
+      return res.status(503).json({ error: 'Could not load reports' })
     }
-
-    console.log('[getReports] raw response — row count:', data?.length ?? 0)
 
     const reports = (data ?? [])
       .filter((r) => {
         if (!r || !r.id || !r.file_name) {
-          console.warn('[getReports] skipping malformed row:', JSON.stringify(r))
+          console.warn('[getReports] skipping malformed row:', r?.id ?? '(no id)')
           return false
         }
         return true
@@ -110,11 +123,10 @@ export async function getReports(req, res) {
         video_error:        r.video_error        ?? null,
       }))
 
-    console.log('[getReports] returning', reports.length, 'valid reports')
     return res.json({ reports })
   } catch (err) {
-    console.error('[getReports] unexpected exception:', err)
-    return res.json({ reports: [] })
+    console.error('[getReports] unexpected exception:', err.message)
+    return res.status(503).json({ error: 'Could not load reports' })
   }
 }
 
@@ -133,16 +145,14 @@ export async function deleteReport(req, res) {
     return res.status(404).json({ error: 'Report not found' })
   }
 
-  const bucket = process.env.SUPABASE_STORAGE_BUCKET
-  const prefix = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucket}/`
-  const storagePath = report.file_url.startsWith(prefix)
-    ? report.file_url.slice(prefix.length)
-    : null
-
+  const storagePath = storagePathFromUrl(report.file_url)
   if (storagePath) {
-    const { error: storageErr } = await supabase.storage.from(bucket).remove([storagePath])
+    const { error: storageErr } = await supabase.storage.from(process.env.SUPABASE_STORAGE_BUCKET).remove([storagePath])
     if (storageErr) console.error('Storage delete error:', storageErr.message)
   }
+
+  // Right-to-delete covers the rendered videos too (best-effort; logged on failure).
+  await deleteRenderedVideos(id)
 
   const { error: dbErr } = await supabase.from('reports').delete().eq('id', id).eq('user_id', userId)
   if (dbErr) {

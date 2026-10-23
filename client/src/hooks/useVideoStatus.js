@@ -3,7 +3,9 @@ import axios from '../utils/axios'
 import { useAuth } from '../context/AuthContext'
 
 const POLL_INTERVAL_MS = 5000
-const MAX_POLLS = 60 // 5 minutes (60 × 5s)
+// 20 minutes — matches the server's stale-'generating' window. Renders on the
+// shared-CPU machine can take several minutes; giving up sooner shows a false failure.
+const MAX_POLLS = 240
 
 export function useVideoStatus(reportId) {
   const { token } = useAuth()

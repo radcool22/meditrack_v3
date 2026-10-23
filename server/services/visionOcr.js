@@ -51,13 +51,55 @@ async function ocrImage(buffer) {
 }
 
 /**
- * Extract raw text from a PDF buffer using pdf-parse.
- * Works well for digitally-generated Indian lab PDFs (SRL, Lal PathLabs).
+ * OCR a scanned (image-only) PDF with Vision's file API. Inline content
+ * covers the first 5 pages — enough for a lab report.
+ */
+async function ocrScannedPdf(buffer) {
+  const res = await fetch(
+    `https://vision.googleapis.com/v1/files:annotate?key=${process.env.GOOGLE_CLOUD_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{
+          inputConfig: { content: buffer.toString('base64'), mimeType: 'application/pdf' },
+          features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
+          imageContext: { languageHints: ['en', 'hi'] },
+        }],
+      }),
+    }
+  )
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Vision PDF error ${res.status}: ${err}`)
+  }
+
+  const json  = await res.json()
+  const file  = json.responses?.[0]
+  if (file?.error) throw new Error(`Vision PDF error (${file.error.code}): ${file.error.message}`)
+  const text = (file?.responses ?? []).map((page) => page.fullTextAnnotation?.text ?? '').join('\n').trim()
+  if (!text) throw new Error('Vision found no text in the PDF — it may be blurry or blank')
+  return text
+}
+
+// Fewer characters than this means the PDF is a scan with no text layer.
+const MIN_PDF_TEXT_CHARS = 40
+
+/**
+ * Extract raw text from a PDF buffer. Digitally-generated lab PDFs (SRL,
+ * Lal PathLabs) have a text layer that pdf-parse reads directly; scanned
+ * PDFs (very common — a phone scan saved as PDF) fall back to Vision OCR.
  */
 async function ocrPdf(buffer) {
-  const result = await pdfParse(buffer)
-  if (!result.text?.trim()) throw new Error('pdf-parse returned no text')
-  return result.text
+  let text = ''
+  try {
+    text = (await pdfParse(buffer)).text?.trim() ?? ''
+  } catch {
+    // Unreadable text layer — Vision can still OCR the pages.
+  }
+  if (text.length >= MIN_PDF_TEXT_CHARS) return text
+  return ocrScannedPdf(buffer)
 }
 
 /**

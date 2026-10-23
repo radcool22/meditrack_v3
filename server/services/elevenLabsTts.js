@@ -1,4 +1,5 @@
 import { WebSocket } from 'ws'
+import jwt from 'jsonwebtoken'
 import { getLanguage, getAllLanguages } from '../config/languages.js'
 
 // Maps a browser STT locale (what the website's /ws/tts client sends as
@@ -38,8 +39,16 @@ function numberToWords(str) {
   return str
 }
 
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+// "%" spoken in the reply's language; languages not listed keep the symbol.
+const PERCENT_WORD = { en: ' percent', hi: ' प्रतिशत' }
+
 // ── Main preprocessing function ──────────────────────────────────────
-export function preprocessForVoice(text) {
+// langCode: the reply's language. Digits are only spelled out as English
+// words for English — ElevenLabs reads raw digits in the voice's own language,
+// so a Hindi sentence must not get "two point one" inserted into it.
+export function preprocessForVoice(text, langCode = 'en') {
   if (!text) return text
 
   // 1. Remove markdown symbols
@@ -47,6 +56,18 @@ export function preprocessForVoice(text) {
 
   // 2. Replace leading bullet/dash on a line with a comma pause
   text = text.replace(/^[\s]*[-•]\s+/gm, ', ')
+
+  // 2b. Indian digit grouping: "1,50,000" is one number, not "one, fifty, zero"
+  text = text.replace(/(\d),(?=\d)/g, '$1')
+
+  // 2c. Dates: 15/03/2025 → "15 March 2025" (English only; elsewhere the voice reads digits)
+  if (langCode === 'en') {
+    text = text.replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, (m, d, mo, y) =>
+      MONTHS[+mo - 1] ? `${+d} ${MONTHS[+mo - 1]} ${y}` : m)
+  }
+
+  // 2d. Percent sign
+  if (PERCENT_WORD[langCode]) text = text.replace(/\s*%/g, PERCENT_WORD[langCode])
 
   // 3. Medical units — order matters (longer patterns first)
   const unitMap = [
@@ -89,8 +110,8 @@ export function preprocessForVoice(text) {
     text = text.replace(pattern, replacement)
   }
 
-  // 4. Convert numbers to words
-  text = numberToWords(text)
+  // 4. Convert numbers to words (English only — see note above)
+  if (langCode === 'en') text = numberToWords(text)
 
   // 5. Collapse extra whitespace
   text = text.replace(/\s{2,}/g, ' ').trim()
@@ -117,6 +138,15 @@ export function handleTtsConnection(ws) {
 
     if (msg.type !== 'speak' || !msg.text?.trim()) {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'done' }))
+      return
+    }
+
+    // Logged-in users only — otherwise anyone can spend the ElevenLabs quota.
+    try {
+      jwt.verify(msg.token ?? '', process.env.JWT_SECRET)
+    } catch {
+      if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'error', message: 'unauthorized' }))
+      ws.close()
       return
     }
 
@@ -160,7 +190,7 @@ export function handleTtsConnection(ws) {
         voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0, use_speaker_boost: true },
       }))
       // Text to speak — preprocessed for clean pronunciation
-      elevenWs.send(JSON.stringify({ text: preprocessForVoice(msg.text.trim()) + ' ' }))
+      elevenWs.send(JSON.stringify({ text: preprocessForVoice(msg.text.trim(), lang.code) + ' ' }))
       // EOS
       elevenWs.send(JSON.stringify({ text: '' }))
     })
@@ -206,7 +236,7 @@ export async function generateTtsBuffer(text, langCode = 'en') {
   const lang = getLanguage(langCode)
 
   const body = {
-    text:           preprocessForVoice(text),
+    text:           preprocessForVoice(text, lang.code),
     model_id:       lang.elevenLabsModel,
     voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0, use_speaker_boost: true },
   }

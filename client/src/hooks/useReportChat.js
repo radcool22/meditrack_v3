@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import axios from '../utils/axios'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { friendly } from '../utils/friendlyError'
 
 export function useReportChat(reportId) {
   const { token } = useAuth()
+  const { language } = useLanguage()
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
@@ -37,7 +39,7 @@ export function useReportChat(reportId) {
         const history = messages.map((m) => ({ role: m.role, content: m.content }))
         const { data } = await axios.post(
           `/api/chat/${reportId}/report-chat`,
-          { message: text.trim(), history },
+          { message: text.trim(), history, language },
           { headers }
         )
         const assistantMsg = {
@@ -56,7 +58,7 @@ export function useReportChat(reportId) {
         setSending(false)
       }
     },
-    [messages, sending, reportId, token]
+    [messages, sending, reportId, token, language]
   )
 
   const appendVoiceTurn = useCallback((userText, assistantText) => {

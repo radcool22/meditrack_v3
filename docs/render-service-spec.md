@@ -10,7 +10,7 @@ This document is the source of truth for the integration contract between meditr
 
 Accepts a parsed `Report` over HTTPS. Returns a `jobId` immediately (async). Generates the video (30s–3min depending on cold/warm state). Posts back to a callback URL when complete.
 
-The render service is hosted at `https://meditrack-render.fly.dev`. It runs in Fly.io's Mumbai region.
+The render service is hosted at `https://meditrack-render-v3.fly.dev`. It runs in Fly.io's Singapore region (`sin` — ElevenLabs blocks `bom`).
 
 You do NOT need to know how it generates the video. Treat it as a black box that takes Reports and produces videos.
 
@@ -24,7 +24,7 @@ Request:
 
 ```http
 POST /render
-Host: meditrack-render.fly.dev
+Host: meditrack-render-v3.fly.dev
 Authorization: Bearer <RENDER_API_KEY>
 Content-Type: application/json
 ```
@@ -36,14 +36,14 @@ Body:
   reportId: string;                          // Your internal report ID
   callbackUrl: string;                       // Where we POST when done
   patient: {
-    firstName: string;                       // For personalization ("Namaste Priya ji")
+    firstName: string;                       // For personalization ("Namaste Priya ji"); "" if unknown — never a placeholder
     ageYears: number;                        // Used for safety gate (< 18 = rejection)
     isPregnancyPanel: boolean;               // Used for safety gate
   };
   report: {
     type: string;                            // e.g. "Lipid Profile" — spoken in audio
-    date: string;                            // ISO format "2025-10-18"
-    lab: string;                             // e.g. "Dr. Lal PathLabs" — spoken in audio
+    date: string;                            // ISO format "2025-10-18"; "" if the report has no printed date
+    lab: string;                             // e.g. "Dr. Lal PathLabs" — spoken in audio; "" if unknown
   };
   findings: Array<{
     valueName: string;                       // e.g. "LDL Cholesterol"
@@ -117,7 +117,7 @@ Retry-After: 60
 }
 ```
 
-Current rate limit: 10 requests/minute per IP. Generous for v1 but worth knowing.
+Current rate limit: 30 requests/minute per IP. All traffic comes from meditrack_v3, so this is effectively global.
 
 ### Callback to your URL
 
@@ -142,6 +142,8 @@ Authorization: Bearer <CALLBACK_SHARED_SECRET>
 
 The `videoUrl` is a presigned URL valid for 24 hours. After that you'd need to re-sign it — but meditrack_v3 should store and serve it directly, and re-render only if the URL expires before the user accesses it (rare in practice).
 
+Callbacks are retried (2s, 10s, 30s) on network errors and 5xx. A failure callback is sent only once no retry is coming — a retryable failure (TTS, render) that BullMQ will retry does not produce one. meditrack_v3 ignores callbacks whose `jobId` is not the report's current `video_job_id`.
+
 Failure:
 
 ```http
@@ -155,10 +157,14 @@ Authorization: Bearer <CALLBACK_SHARED_SECRET>
   "status": "failed",
   "error": "specialist_required" | "script_generation_failed"
           | "script_safety_violation" | "script_number_hallucination"
-          | "tts_failed" | "render_failed",
+          | "script_too_long" | "tts_failed" | "render_failed" | "render_timeout",
   "message": "Human-readable reason (no PHI)"
 }
 ```
+
+### `DELETE /videos/:reportId`
+
+Right-to-delete. Bearer `RENDER_API_KEY`. Deletes every rendered video for the report from R2. Returns `{ "deleted": N }`. meditrack_v3 calls it when a report is deleted.
 
 ### `GET /healthz`
 
@@ -206,7 +212,7 @@ CALLBACK_SHARED_SECRET=$(openssl rand -base64 32)
 # Then set in both:
 # - meditrack_v3 env (however meditrack_v3 manages secrets)
 # - Fly secrets for render service:
-#     fly secrets set CALLBACK_SHARED_SECRET="$CALLBACK_SHARED_SECRET" --app meditrack-render
+#     fly secrets set CALLBACK_SHARED_SECRET="$CALLBACK_SHARED_SECRET" --app meditrack-render-v3
 ```
 
 Verifying the callback in meditrack_v3:
@@ -260,13 +266,13 @@ If meditrack_v3 ever calls the render service with malformed data (wrong shape, 
 
 ## Production state (as of this writing)
 
-- Render service deployed at `https://meditrack-render.fly.dev`
-- Fly region: Mumbai (`bom`)
-- VM: `shared-cpu-2x`, 4GB RAM
+- Render service deployed at `https://meditrack-render-v3.fly.dev`
+- Fly region: Singapore (`sin`)
+- VM: `shared-cpu-4x`, 4GB RAM
 - Storage: Cloudflare R2 bucket `meditrack-videos`, hosted-by-Upstash Redis for queue
 - LLM: OpenAI gpt-4o
 - TTS: ElevenLabs Multilingual v2 (Hindi)
-- Healthcheck: `https://meditrack-render.fly.dev/healthz` — should return 200
+- Healthcheck: `https://meditrack-render-v3.fly.dev/healthz` — should return 200
 
 For source code and detailed architecture see the `meditrack-render` repo separately.
 
@@ -277,10 +283,10 @@ For source code and detailed architecture see the `meditrack-render` repo separa
 To verify the render service is alive and your auth works without doing a full render:
 
 ```bash
-curl https://meditrack-render.fly.dev/healthz
+curl https://meditrack-render-v3.fly.dev/healthz
 # Expected: {"ok":true,"uptime_sec":N}
 
-curl -X POST https://meditrack-render.fly.dev/render \
+curl -X POST https://meditrack-render-v3.fly.dev/render \
   -H "Authorization: Bearer <RENDER_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{}'

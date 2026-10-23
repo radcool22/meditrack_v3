@@ -29,6 +29,9 @@ export function useAnalysis(reportId) {
       if (data.report_date)  setReportDate(data.report_date)
       setStatus('done')
     } catch (err) {
+      // 409: another request (e.g. the dashboard, right after upload) is already
+      // analysing this report — wait for it instead of reporting a failure.
+      if (err.response?.status === 409) { setStatus('processing'); return }
       setError(friendly('the report analysis not completing'))
       setStatus('failed')
     }
@@ -43,6 +46,7 @@ export function useAnalysis(reportId) {
       if (data.analysis)      setAnalysis(data.analysis)
       if (data.report_title)  setReportTitle(data.report_title)
       if (data.report_date)   setReportDate(data.report_date)
+      if (data.status === 'failed') setError(friendly('the report analysis not completing'))
       if (data.status === 'done' || data.status === 'failed') {
         stopPolling()
         setLoading(false)

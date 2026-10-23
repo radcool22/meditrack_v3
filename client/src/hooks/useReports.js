@@ -30,16 +30,32 @@ export function useReports() {
 
   // Trigger analysis for a single report and update its status in state
   const triggerAnalysis = useCallback(async (reportId) => {
+    // Mark done — with the title and date the analysis extracted, so the card
+    // doesn't show the raw file name and "Date unknown" until a refresh.
+    const markDone = (data) => setReports((prev) =>
+      prev.map((r) => (r.id === reportId
+        ? { ...r, status: 'done', report_title: data.report_title ?? r.report_title, report_date: data.report_date ?? r.report_date }
+        : r))
+    )
+    const markFailed = () => setReports((prev) =>
+      prev.map((r) => (r.id === reportId ? { ...r, status: 'failed' } : r))
+    )
+
     try {
-      await axios.post(`/api/analysis/${reportId}`, {}, { headers: authHeaders })
-      // Mark done
-      setReports((prev) =>
-        prev.map((r) => (r.id === reportId ? { ...r, status: 'done' } : r))
-      )
-    } catch {
-      setReports((prev) =>
-        prev.map((r) => (r.id === reportId ? { ...r, status: 'failed' } : r))
-      )
+      const { data } = await axios.post(`/api/analysis/${reportId}`, {}, { headers: authHeaders })
+      markDone(data)
+    } catch (err) {
+      if (err.response?.status !== 409) { markFailed(); return }
+      // 409: the report page is already analysing it — wait for that run.
+      for (let i = 0; i < 60; i++) {
+        await new Promise((r) => setTimeout(r, 3000))
+        try {
+          const { data } = await axios.get(`/api/analysis/${reportId}`, { headers: authHeaders })
+          if (data.status === 'done' && data.analysis) { markDone(data); return }
+          if (data.status === 'failed') { markFailed(); return }
+        } catch { /* transient — keep waiting */ }
+      }
+      markFailed()
     }
   }, [token])
 

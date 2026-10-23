@@ -1,27 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import axios from '../utils/axios'
 import { useAuth } from '../context/AuthContext'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useVoice } from '../hooks/useVoice'
 import { useVideoStatus } from '../hooks/useVideoStatus'
-import { useLanguage } from '../context/LanguageContext'
+import { requestVideo } from '../utils/videoApi'
+import { videoErrorMessage } from '../utils/videoErrors'
 import LangToggle from '../components/LangToggle'
 import ChatPanel from '../components/ChatPanel'
 import VideoModal from '../components/VideoModal'
-
-const FLAG_STYLES = {
-  HIGH:     'bg-red-50 border-red-200',
-  LOW:      'bg-amber-50 border-amber-200',
-  ABNORMAL: 'bg-orange-50 border-orange-200',
-}
-
-const FLAG_VALUE_COLOR = {
-  HIGH:     'text-red-600',
-  LOW:      'text-amber-500',
-  ABNORMAL: 'text-orange-500',
-}
+import VideoAgeModal from '../components/VideoAgeModal'
 
 function formatDate(dateStr) {
   if (!dateStr) return 'Date unknown'
@@ -53,7 +42,7 @@ function VideoIdleFrame() {
         </svg>
       </div>
       <div>
-        <p className="text-[14px] font-semibold text-white/60">60-second Hindi video</p>
+        <p className="text-[14px] font-semibold text-white/60">Short Hindi video</p>
         <p className="text-[12px] text-white/35 mt-1 leading-relaxed">
           Tap Generate Video below to create a simple Hindi summary of this report
         </p>
@@ -64,6 +53,21 @@ function VideoIdleFrame() {
       <span className="text-[11px] font-extrabold absolute top-4 right-4" style={{ color: 'rgba(255,255,255,0.06)' }}>
         MediTrack
       </span>
+    </div>
+  )
+}
+
+// ── Failed state inside the frame ────────────────────────────
+function VideoFailedFrame({ message }) {
+  return (
+    <div className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center gap-4 px-6 text-center"
+      style={{ background: '#0a0e1a' }}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgba(255,255,255,0.35)" className="w-10 h-10">
+        <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
+      </svg>
+      <p className="text-[14px] font-medium leading-relaxed" style={{ color: 'rgba(255,255,255,0.7)' }}>
+        {message}
+      </p>
     </div>
   )
 }
@@ -97,37 +101,39 @@ export default function ReportPage() {
   const autoSpeak = searchParams.get('autoSpeak') === '1'
 
   const { token } = useAuth()
-  const { language } = useLanguage()
   const { analysis, reportTitle, reportDate, status, loading, error, retry } = useAnalysis(id)
   const { connect, speak } = useVoice()
-  const { videoStatus, videoUrl, notifyGenerating, cancel } = useVideoStatus(id)
+  const { videoStatus, videoUrl, videoError, notifyGenerating, cancel } = useVideoStatus(id)
   const hasSpoken = useRef(false)
 
   const [generateAttempts, setGenerateAttempts] = useState(0)
   const [showVideoModal, setShowVideoModal] = useState(false)
+  const [showAgeModal, setShowAgeModal] = useState(false)
+  const [requestError, setRequestError] = useState(null) // error code from the generate request
 
   const attemptsExhausted = generateAttempts >= 3
 
-  async function handleGenerateVideo() {
+  function handleGenerateVideo() {
     if (attemptsExhausted) return
+    setRequestError(null)
+    setShowAgeModal(true)
+  }
+
+  async function handleAgeConfirm(ageYears) {
+    setShowAgeModal(false)
     setGenerateAttempts((n) => n + 1)
-    try {
-      await axios.post(
-        `/api/reports/${id}/generate-video`,
-        { ageYears: 25 },
-        { headers: { Authorization: `Bearer ${token}` } },
-      )
-      notifyGenerating()
-    } catch (err) {
-      console.error('Generate video failed:', err)
-    }
+    const result = await requestVideo(id, ageYears, token)
+    if (result.ok) notifyGenerating()
+    else setRequestError(result.code ?? 'unknown')
   }
 
   useEffect(() => {
     if (!autoSpeak || !analysis?.summary || hasSpoken.current) return
     hasSpoken.current = true
     connect()
-    speak(analysis.summary, language === 'hi' ? 'hi-IN' : 'en-IN')
+    // The summary is written in English, so it is read in the English voice —
+    // the Hindi voice reading English text sounds broken.
+    speak(analysis.summary, 'en-IN')
   }, [autoSpeak, analysis?.summary])
 
   const isProcessing = status === 'processing' || (status === 'pending' && !analysis)
@@ -139,7 +145,7 @@ export default function ReportPage() {
       <header className="bg-card border-b border-ink-200/60 px-5 py-4 flex items-center gap-4 sticky top-0 z-10">
         <button
           onClick={() => navigate('/dashboard')}
-          className="text-[15px] font-semibold text-teal-700 hover:text-teal-900 transition-colors flex items-center gap-1.5"
+          className="text-[15px] font-semibold text-accent-500 hover:text-accent-600 transition-colors flex items-center gap-1.5"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
             <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10Z" clipRule="evenodd" />
@@ -200,11 +206,13 @@ export default function ReportPage() {
                 <div className="flex-1 h-px bg-ink-200/60" />
               </div>
 
-              {/* 9:16 frame — shown while idle or generating */}
+              {/* 9:16 frame — shown while idle, generating, or failed */}
               {videoStatus !== 'ready' && (
                 <div className="w-full max-w-[360px] mx-auto relative" style={{ aspectRatio: '9 / 16' }}>
-                  {videoStatus === 'none'       && <VideoIdleFrame />}
+                  {videoStatus === 'none' && !requestError && <VideoIdleFrame />}
+                  {videoStatus === 'none' && requestError && <VideoFailedFrame message={videoErrorMessage(requestError)} />}
                   {videoStatus === 'generating' && <VideoGeneratingFrame />}
+                  {videoStatus === 'failed'     && <VideoFailedFrame message={videoErrorMessage(videoError)} />}
                 </div>
               )}
 
@@ -236,8 +244,8 @@ export default function ReportPage() {
                 </>
               )}
 
-              {/* Generate Video button — only when none */}
-              {videoStatus === 'none' && (
+              {/* Generate Video button — when none, or to retry after a failure */}
+              {(videoStatus === 'none' || videoStatus === 'failed') && (
                 <>
                   <button
                     onClick={() => !attemptsExhausted && handleGenerateVideo()}
@@ -247,7 +255,7 @@ export default function ReportPage() {
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 shrink-0">
                       <path d="M3.25 4A2.25 2.25 0 001 6.25v7.5A2.25 2.25 0 003.25 16h7.5A2.25 2.25 0 0013 13.75v-7.5A2.25 2.25 0 0010.75 4h-7.5zM19 4.75a.75.75 0 00-1.28-.53l-3 3a.75.75 0 00-.22.53v4.5c0 .199.079.39.22.53l3 3a.75.75 0 001.28-.53V4.75z" />
                     </svg>
-                    Generate Video
+                    {videoStatus === 'failed' || requestError ? 'Try Again' : 'Generate Video'}
                   </button>
                   {attemptsExhausted && (
                     <p className="mt-2 text-center text-[13px] text-ink-400 max-w-[360px] mx-auto">
@@ -342,6 +350,14 @@ export default function ReportPage() {
           </>
         )}
       </main>
+
+      {showAgeModal && (
+        <VideoAgeModal
+          reportTitle={reportTitle}
+          onConfirm={handleAgeConfirm}
+          onClose={() => setShowAgeModal(false)}
+        />
+      )}
 
       <footer className="py-6 text-center text-[12px] text-ink-400">
         <a
