@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MediTrack — Your lab report, explained in your language</title>
-<meta name="description" content="Send a photo of any lab report on WhatsApp or just call. MediTrack explains it in Hindi, English, Marathi, Gujarati or Malayalam — simply, and always pointing you to a doctor.">
+<meta name="description" content="Call MediTrack or send a photo of any lab report on WhatsApp. MediTrack explains it in Hindi, English, Marathi, Gujarati or Malayalam — simply, and always pointing you to a doctor.">
 <meta name="theme-color" content="#F7F6F4">
 <meta property="og:title" content="MediTrack — Your lab report, explained in your language">
-<meta property="og:description" content="WhatsApp it or just call. Understand any lab report in Hindi, English, Marathi, Gujarati or Malayalam.">
+<meta property="og:description" content="Just call, or WhatsApp it. Understand any lab report in Hindi, English, Marathi, Gujarati or Malayalam.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.meditrack.in/">
 <meta property="og:image" content="https://www.meditrack.in/meditrack-icon-256.png">
@@ -87,14 +87,14 @@ h3 { font-size: 22px; letter-spacing: -0.02em; line-height: 1.15; }
 .hero-note b { color: var(--ink); font-weight: 600; }
 .hero-art { position: relative; height: 620px; }
 .hero-art .phone { position: absolute; }
-.hero-art .p-wa { width: 300px; left: 0; top: 10px; transform: rotate(-4deg); }
-.hero-art .p-call { width: 280px; right: 0; top: 110px; transform: rotate(4deg); }
+.hero-art .p-call { width: 290px; left: 0; top: 10px; transform: rotate(-4deg); z-index: 2; }
+.hero-art .p-wa { width: 290px; right: 0; top: 100px; transform: rotate(4deg); }
 @media (max-width: 960px) {
   .hero { padding-top: 120px; }
   .hero-grid { grid-template-columns: 1fr; }
   .hero-art { height: 560px; max-width: 520px; width: 100%; margin: 10px auto 0; }
-  .hero-art .p-wa { width: 62%; left: 0; }
-  .hero-art .p-call { width: 58%; top: 90px; }
+  .hero-art .p-call { width: 60%; left: 0; }
+  .hero-art .p-wa { width: 60%; top: 90px; }
 }
 @media (max-width: 420px) { .hero-art { height: 470px; } }
 
@@ -107,7 +107,6 @@ h3 { font-size: 22px; letter-spacing: -0.02em; line-height: 1.15; }
 .wa .screen { background: var(--wa-chat); }
 .wa-top { background: var(--wa-deep); color: #fff; padding: 40px 14px 12px; display: flex; align-items: center; gap: 10px; }
 .wa-av { width: 34px; height: 34px; border-radius: 50%; background: #fff; display: grid; place-items: center; font: 700 15px var(--display); color: var(--ink); flex: none; }
-.wa-av i { color: var(--red); font-style: normal; }
 .wa-name { font: 600 14px/1.2 var(--body); }
 .wa-sub { font-size: 11px; opacity: .8; }
 .wa-body { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; justify-content: flex-end; gap: 7px; overflow: hidden; }
@@ -138,7 +137,6 @@ h3 { font-size: 22px; letter-spacing: -0.02em; line-height: 1.15; }
 /* Call screen */
 .call .screen { background: radial-gradient(120% 70% at 50% 0%, #2b3a2f 0%, #121614 55%, #0b0d0c 100%); color: #fff; align-items: center; text-align: center; padding: 54px 16px 22px; }
 .call-av { width: 74px; height: 74px; border-radius: 50%; background: #fff; display: grid; place-items: center; font: 800 32px var(--display); color: var(--ink); box-shadow: 0 0 0 0 rgba(37,211,102,.5); animation: ring 2.2s infinite; }
-.call-av i { color: var(--red); font-style: normal; }
 @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(199,243,108,.45); } 100% { box-shadow: 0 0 0 26px rgba(199,243,108,0); } }
 .call-name { font: 600 19px/1.2 var(--display); margin-top: 14px; letter-spacing: -0.02em; }
 .call-time { font: 500 13px var(--body); opacity: .7; margin-top: 4px; font-variant-numeric: tabular-nums; }
@@ -290,8 +288,8 @@ footer { padding: 50px 0 40px; color: var(--muted); font-size: 14px; }
 <header class="nav" aria-label="Main">
   <a class="logo" href="#top" aria-label="MediTrack home">MediTrack<i>.</i></a>
   <nav class="nav-links" aria-label="Sections">
-    <a href="#whatsapp">WhatsApp</a>
     <a href="#call">Phone</a>
+    <a href="#whatsapp">WhatsApp</a>
     <a href="#how">How it works</a>
     <a href="#languages">Languages</a>
   </nav>
@@ -306,15 +304,15 @@ footer { padding: 50px 0 40px; color: var(--muted); font-size: 14px; }
     <div>
       <span class="eyebrow reveal"><span class="dot" style="color:var(--red)"></span>Made in India, for India</span>
       <h1 class="reveal" style="margin-top:20px">Your lab report, explained in <span class="rot" id="rot"><span>हिंदी</span></span></h1>
-      <p class="lead reveal">Send a photo on WhatsApp or just call. MediTrack reads any lab report and explains it simply — and tells you when to see a doctor.</p>
+      <p class="lead reveal">Just call, or send a photo on WhatsApp. MediTrack reads any lab report and explains it simply — and tells you when to see a doctor.</p>
       <div class="cta-row reveal">
-        <a class="btn btn-wa" href="https://wa.me/919717628400?text=Hi" target="_blank" rel="noopener">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.21 3.07.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.7.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.18-1.41-.08-.13-.27-.2-.57-.35M12.05 21.79h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26c0-5.45 4.44-9.88 9.89-9.88 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.88 9.88M20.46 3.49A11.82 11.82 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L.06 24l6.31-1.65a11.88 11.88 0 0 0 5.68 1.45h.01c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.17-3.48-8.42"/></svg>
-          Chat on WhatsApp
-        </a>
         <a class="btn btn-dark js-call" href="#call">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
           <span class="js-call-label">Call MediTrack</span>
+        </a>
+        <a class="btn btn-wa" href="https://wa.me/919717628400?text=Hi" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.21 3.07.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.7.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.18-1.41-.08-.13-.27-.2-.57-.35M12.05 21.79h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26c0-5.45 4.44-9.88 9.89-9.88 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.88 9.88M20.46 3.49A11.82 11.82 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L.06 24l6.31-1.65a11.88 11.88 0 0 0 5.68 1.45h.01c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.17-3.48-8.42"/></svg>
+          Chat on WhatsApp
         </a>
       </div>
       <div class="hero-note reveal">
@@ -327,7 +325,7 @@ footer { padding: 50px 0 40px; color: var(--muted); font-size: 14px; }
     <div class="hero-art reveal" aria-hidden="true">
       <div class="phone wa p-wa"><div class="screen">
         <div class="notch"></div>
-        <div class="wa-top"><div class="wa-av">M<i>.</i></div><div><div class="wa-name">MediTrack</div><div class="wa-sub">online</div></div></div>
+        <div class="wa-top"><div class="wa-av">M</div><div><div class="wa-name">MediTrack</div><div class="wa-sub">online</div></div></div>
         <div class="wa-body">
           <div class="msg out doc"><span class="doc-ic"></span><span>blood_report.pdf<span class="t">9:41 ✓✓</span></span></div>
           <div class="msg in">आपका <b>hemoglobin</b> थोड़ा कम है (11.2)। बाकी values normal हैं। 👍<span class="t">9:41</span></div>
@@ -338,7 +336,7 @@ footer { padding: 50px 0 40px; color: var(--muted); font-size: 14px; }
       </div></div>
       <div class="phone call p-call"><div class="screen">
         <div class="notch"></div>
-        <div class="call-av">M<i>.</i></div>
+        <div class="call-av">M</div>
         <div class="call-name">MediTrack</div>
         <div class="call-time">02:14</div>
         <div class="wave"><i style="animation-delay:-.1s"></i><i style="animation-delay:-.5s"></i><i style="animation-delay:-.3s"></i><i style="animation-delay:-.8s"></i><i style="animation-delay:-.2s"></i><i style="animation-delay:-.6s"></i><i style="animation-delay:-.4s"></i></div>
@@ -348,6 +346,36 @@ footer { padding: 50px 0 40px; color: var(--muted); font-size: 14px; }
         </div>
         <div class="call-btns"><span></span><span class="end"></span><span></span></div>
       </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ PHONE CALL ═════════ -->
+<section class="sec" id="call">
+  <div class="wrap split">
+    <div class="reveal" style="order:2">
+      <div class="phone call"><div class="screen">
+        <div class="notch"></div>
+        <div class="call-av">M</div>
+        <div class="call-name">MediTrack</div>
+        <div class="call-time" id="call-time">00:00</div>
+        <div class="wave"><i style="animation-delay:-.1s"></i><i style="animation-delay:-.5s"></i><i style="animation-delay:-.3s"></i><i style="animation-delay:-.8s"></i><i style="animation-delay:-.2s"></i><i style="animation-delay:-.6s"></i><i style="animation-delay:-.4s"></i><i style="animation-delay:-.7s"></i><i style="animation-delay:-.15s"></i></div>
+        <div class="transcript" id="call-lines" aria-label="Example phone call with MediTrack"></div>
+        <div class="call-btns"><span></span><span class="end"></span><span></span></div>
+      </div></div>
+    </div>
+
+    <div class="sec-head" style="order:1">
+      <span class="eyebrow reveal"><span class="dot"></span>Phone call</span>
+      <h2 class="reveal">No app. No typing. Just call.</h2>
+      <p class="lead reveal">Call MediTrack from any phone. It recognises your number, opens your reports, and talks you through them — in your language, at your pace.</p>
+      <div class="steps">
+        <div class="step reveal"><b>01</b><h3>Call</h3><p>From any phone, smartphone or not.</p></div>
+        <div class="step reveal"><b>02</b><h3>Pick a report</h3><p>“Your blood test from 18 October?”</p></div>
+        <div class="step reveal"><b>03</b><h3>Ask anything</h3><p>Interrupt, ask again, take your time.</p></div>
+      </div>
+      <div class="parents reveal"><span>👵</span>Built for parents and grandparents who would rather talk than type.</div>
+      <div class="phone-cta reveal" id="phone-cta"></div>
     </div>
   </div>
 </section>
@@ -372,40 +400,10 @@ footer { padding: 50px 0 40px; color: var(--muted); font-size: 14px; }
     <div class="reveal">
       <div class="phone wa"><div class="screen">
         <div class="notch"></div>
-        <div class="wa-top"><div class="wa-av">M<i>.</i></div><div><div class="wa-name">MediTrack</div><div class="wa-sub" id="wa-status">online</div></div></div>
+        <div class="wa-top"><div class="wa-av">M</div><div><div class="wa-name">MediTrack</div><div class="wa-sub" id="wa-status">online</div></div></div>
         <div class="wa-body" id="wa-chat" aria-label="Example WhatsApp conversation with MediTrack"></div>
         <div class="wa-input"><span>Message</span><b></b></div>
       </div></div>
-    </div>
-  </div>
-</section>
-
-<!-- ═════════ PHONE CALL ═════════ -->
-<section class="sec" id="call">
-  <div class="wrap split">
-    <div class="reveal" style="order:2">
-      <div class="phone call"><div class="screen">
-        <div class="notch"></div>
-        <div class="call-av">M<i>.</i></div>
-        <div class="call-name">MediTrack</div>
-        <div class="call-time" id="call-time">00:00</div>
-        <div class="wave"><i style="animation-delay:-.1s"></i><i style="animation-delay:-.5s"></i><i style="animation-delay:-.3s"></i><i style="animation-delay:-.8s"></i><i style="animation-delay:-.2s"></i><i style="animation-delay:-.6s"></i><i style="animation-delay:-.4s"></i><i style="animation-delay:-.7s"></i><i style="animation-delay:-.15s"></i></div>
-        <div class="transcript" id="call-lines" aria-label="Example phone call with MediTrack"></div>
-        <div class="call-btns"><span></span><span class="end"></span><span></span></div>
-      </div></div>
-    </div>
-
-    <div class="sec-head" style="order:1">
-      <span class="eyebrow reveal"><span class="dot"></span>Phone call</span>
-      <h2 class="reveal">No app. No typing. Just call.</h2>
-      <p class="lead reveal">Call MediTrack from any phone. It recognises your number, opens your reports, and talks you through them — in your language, at your pace.</p>
-      <div class="steps">
-        <div class="step reveal"><b>01</b><h3>Call</h3><p>From any phone, smartphone or not.</p></div>
-        <div class="step reveal"><b>02</b><h3>Pick a report</h3><p>“Your blood test from 18 October?”</p></div>
-        <div class="step reveal"><b>03</b><h3>Ask anything</h3><p>Interrupt, ask again, take your time.</p></div>
-      </div>
-      <div class="parents reveal"><span>👵</span>Built for parents and grandparents who would rather talk than type.</div>
-      <div class="phone-cta reveal" id="phone-cta"></div>
     </div>
   </div>
 </section>
@@ -493,8 +491,8 @@ footer { padding: 50px 0 40px; color: var(--muted); font-size: 14px; }
     <div class="final reveal">
       <h2>Your next report doesn't have to be confusing.</h2>
       <div class="cta-row">
-        <a class="btn btn-wa" href="https://wa.me/919717628400?text=Hi" target="_blank" rel="noopener">Chat on WhatsApp</a>
         <a class="btn btn-light js-call" href="#call"><span class="js-call-label">Call MediTrack</span></a>
+        <a class="btn btn-wa" href="https://wa.me/919717628400?text=Hi" target="_blank" rel="noopener">Chat on WhatsApp</a>
         <a class="btn-ghost" style="color:#fff;border-color:rgba(255,255,255,.3)" href="https://ui.meditrack.in">Use the web app →</a>
       </div>
     </div>
