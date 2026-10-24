@@ -59,6 +59,7 @@ h3 { font-size: 22px; letter-spacing: -0.02em; line-height: 1.15; }
 .btn-light { background: #fff; color: var(--ink); }
 .btn-ghost { height: auto; padding: 0; color: var(--ink-2); font-weight: 500; border-bottom: 1.5px solid var(--line); border-radius: 0; padding-bottom: 3px; }
 .btn-ghost:hover { border-color: var(--ink); transform: none; }
+.badge-soon { font: 600 11px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; background: var(--lime); color: #1d2a05; padding: 6px 9px; border-radius: 999px; }
 
 /* ── Nav ───────────────────────────────────────────────── */
 .nav { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 50; width: min(1100px, calc(100% - 24px)); display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 8px 8px 22px; border-radius: 999px; background: rgba(247,246,244,.72); backdrop-filter: saturate(1.6) blur(16px); -webkit-backdrop-filter: saturate(1.6) blur(16px); border: 1px solid var(--line); box-shadow: 0 8px 30px -18px rgba(0,0,0,.25); }
@@ -526,9 +527,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, reduceMotion ? 0 : ms))
   const tel = MEDITRACK_PHONE.replace(/[^\d+]/g, '')
   const callHref = tel ? `tel:${tel}` : APP_URL
   document.querySelectorAll('.js-call').forEach((a) => { a.href = callHref })
-  document.getElementById('phone-cta').innerHTML =
-    `<a class="btn btn-light" href="${callHref}">Call MediTrack</a>` +
-    (tel ? `<span class="phone-num">${MEDITRACK_PHONE}</span>` : '')
+  document.getElementById('phone-cta').innerHTML = tel
+    ? `<a class="btn btn-light" href="${callHref}">Call MediTrack</a><span class="phone-num">${MEDITRACK_PHONE}</span>`
+    : `<span class="phone-num" style="font-size:24px">Phone line launching soon</span><span class="badge-soon">Coming soon</span>
+       <a class="btn btn-light" style="margin-top:6px" href="https://wa.me/919717628400?text=Hi" target="_blank" rel="noopener">Use WhatsApp today</a>`
 })()
 
 // Reveal on scroll
