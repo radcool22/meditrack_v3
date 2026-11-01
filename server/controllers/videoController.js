@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import supabase from '../services/supabase.js'
-import { scheduleVideoRender } from '../services/videoService.js'
+import { scheduleVideoRender, settleStaleVideo } from '../services/videoService.js'
 import { sendWhatsAppText, sendWhatsAppVideo } from '../services/whatsappService.js'
 
 // scheduleVideoRender error code → HTTP status. Codes go to the client as-is
@@ -91,9 +91,9 @@ export async function getVideoStatus(req, res) {
   const { id } = req.params
   const { userId } = req.user
 
-  const { data: report, error } = await supabase
+  let { data: report, error } = await supabase
     .from('reports')
-    .select('video_status, video_url, video_error, video_requested_at')
+    .select('id, video_status, video_url, video_error, video_requested_at')
     .eq('id', id)
     .eq('user_id', userId)
     .maybeSingle()
@@ -101,6 +101,7 @@ export async function getVideoStatus(req, res) {
   if (error || !report) {
     return res.status(404).json({ error: 'Report not found' })
   }
+  report = await settleStaleVideo(report)
 
   let videoUrl = report.video_url
 

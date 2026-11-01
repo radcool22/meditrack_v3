@@ -18,6 +18,19 @@ export function isGeneratingStale(report) {
   return Date.now() - requested > STALE_GENERATING_MS
 }
 
+// A render whose callback never arrived. Report it — and record it — as a
+// timed-out failure, so no screen ever shows a "generating" that will never end.
+// A late callback for the same job still wins (it matches video_job_id).
+export async function settleStaleVideo(report) {
+  if (!isGeneratingStale(report)) return report
+  await supabase
+    .from('reports')
+    .update({ video_status: 'failed', video_error: 'timeout' })
+    .eq('id', report.id)
+    .eq('video_status', 'generating')
+  return { ...report, video_status: 'failed', video_error: 'timeout' }
+}
+
 // The only place a render is triggered — website and WhatsApp both use it.
 // Throws errors with `code`: invalid_age | specialist_required | not_found | not_ready |
 // already_generating | no_numeric_values | rate_limited | render_unavailable | render_error

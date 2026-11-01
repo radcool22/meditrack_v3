@@ -1,5 +1,5 @@
 import supabase from '../services/supabase.js'
-import { deleteRenderedVideos } from '../services/videoService.js'
+import { deleteRenderedVideos, settleStaleVideo } from '../services/videoService.js'
 
 export const MIME_TO_TYPE = {
   'image/jpeg': 'jpg',
@@ -105,7 +105,7 @@ export async function getReports(req, res) {
       return res.status(503).json({ error: 'Could not load reports' })
     }
 
-    const reports = (data ?? [])
+    const rows = (data ?? [])
       .filter((r) => {
         if (!r || !r.id || !r.file_name) {
           console.warn('[getReports] skipping malformed row:', r?.id ?? '(no id)')
@@ -123,6 +123,7 @@ export async function getReports(req, res) {
         video_error:        r.video_error        ?? null,
       }))
 
+    const reports = await Promise.all(rows.map(settleStaleVideo))
     return res.json({ reports })
   } catch (err) {
     console.error('[getReports] unexpected exception:', err.message)
