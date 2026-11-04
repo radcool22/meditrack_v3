@@ -529,7 +529,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, reduceMotion ? 0 : ms))
   document.querySelectorAll('.js-call').forEach((a) => { a.href = callHref })
   document.getElementById('phone-cta').innerHTML = tel
     ? `<a class="btn btn-light" href="${callHref}">Call MediTrack</a><span class="phone-num">${MEDITRACK_PHONE}</span>`
-    : `<p style="font-size:16px;color:rgba(255,255,255,.75);max-width:30em;line-height:1.5"><span class="badge-soon">Almost there</span>&nbsp; We're fixing a small international-calling issue so everyone in India can call MediTrack. Until then, WhatsApp works the same way.</p>
+    : `<p style="font-size:16px;color:rgba(255,255,255,.75);max-width:30em;line-height:1.5"><span class="badge-soon">Calling from abroad?</span>&nbsp; We're fixing a small international-calling issue so callers in the US and other countries can reach MediTrack too. Until then, WhatsApp works the same way, from anywhere.</p>
        <a class="btn btn-light" style="margin-top:6px" href="https://wa.me/919717628400?text=Hi" target="_blank" rel="noopener">Use WhatsApp today</a>`
 })()
 
