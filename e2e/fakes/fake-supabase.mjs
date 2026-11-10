@@ -6,7 +6,7 @@ let tick = 0
 const now = () => new Date(Date.now() + tick++).toISOString()
 
 const DEFAULTS = {
-  users:             () => ({ id: randomUUID(), name: null, language_preference: 'en', created_at: now(), last_login_at: null }),
+  users:             () => ({ id: randomUUID(), name: null, language_preference: 'en', created_at: now(), last_login_at: null, voice_consent_at: null }),
   otp_verifications: () => ({ id: randomUUID(), is_used: false, created_at: now() }),
   reports:           () => ({ id: randomUUID(), status: 'pending', uploaded_at: now(), ocr_raw_text: null, structured_data: null,
                               report_date: null, report_title: null, video_status: 'none', video_url: null, video_job_id: null,
@@ -15,6 +15,9 @@ const DEFAULTS = {
   chat_messages:     () => ({ id: randomUUID(), created_at: now(), message_type: 'text' }),
   whatsapp_sessions: () => ({ id: randomUUID(), state: 'idle', language: 'en', pending_action: null, pending_data: null,
                               recent_history: null, current_report_id: null, user_id: null, updated_at: now() }),
+  voice_calls:       () => ({ id: randomUUID(), report_id: null, status: 'calling', language: 'en', sarvam_attempt_id: null, interaction_id: null,
+                              duration_sec: null, failure_reason: null, transcript: null, summary: null, urgent: false, whatsapp_sent: false,
+                              created_at: now(), ended_at: null }),
 }
 
 const db = globalThis.__db ??= { tables: Object.fromEntries(Object.keys(DEFAULTS).map((t) => [t, []])), storage: new Map(), fail: false }
@@ -65,6 +68,7 @@ class Query {
       if (this.table === 'reports') {
         const gone = new Set(out.map((r) => r.id))
         for (const t of ['report_analyses', 'chat_messages']) db.tables[t] = db.tables[t].filter((r) => !gone.has(r.report_id))
+        for (const c of db.tables.voice_calls) if (gone.has(c.report_id)) c.report_id = null
       }
     }
 

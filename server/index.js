@@ -16,6 +16,7 @@ import analysisRouter from './routes/analysis.js'
 import chatRouter from './routes/chat.js'
 import videosRouter from './routes/videos.js'
 import whatsappRouter from './routes/whatsappRoutes.js'
+import voiceRouter from './routes/voice.js'
 import { handleTtsConnection } from './services/elevenLabsTts.js'
 
 // Express 4 doesn't catch rejected promises from async handlers, and Node
@@ -48,6 +49,7 @@ app.use('/api/analysis', analysisRouter)
 app.use('/api/chat', chatRouter)
 app.use('/api/videos', videosRouter)
 app.use('/api/whatsapp', whatsappRouter)
+app.use('/api/voice', voiceRouter)
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }))
 

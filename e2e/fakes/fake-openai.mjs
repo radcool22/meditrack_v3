@@ -32,6 +32,11 @@ export default {
         const last = req.messages.at(-1)?.content ?? ''
         if (last.includes('FAIL_OPENAI') || sys.includes('FAIL_OPENAI')) throw new Error('429 Rate limit reached')
         let content
+        if (sys.startsWith('Summarise a phone call')) {
+          const lang = sys.includes('Hindi') ? 'hi' : 'en'
+          content = JSON.stringify({ summary: `CallSummary(${lang}): you asked about sugar.`, urgent: last.includes('chest pain') })
+          return { choices: [{ message: { content } }] }
+        }
         if (req.response_format?.type === 'json_object') {
           if (globalThis.__gptDelay) await new Promise((r) => setTimeout(r, globalThis.__gptDelay))
           if (sys.includes('BADGPT')) throw new Error('500 upstream')

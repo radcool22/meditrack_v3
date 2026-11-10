@@ -21,6 +21,9 @@ Object.assign(process.env, {
   APP_BASE_URL: BASE, RENDER_SERVICE_URL: `http://127.0.0.1:${RENDER_PORT}`, RENDER_API_KEY: 'render-key',
   CALLBACK_SHARED_SECRET: 'cb-secret', R2_PUBLIC_URL: 'https://videos.example',
   WHATSAPP_VERIFY_TOKEN: 'verify-me', WHATSAPP_ACCESS_TOKEN: 'wa-token', WHATSAPP_PHONE_NUMBER_ID: 'PHONEID', WHATSAPP_APP_SECRET: 'wa-secret',
+  SARVAM_API_KEY: 'sarvam-key', SARVAM_ORG_ID: 'org1', SARVAM_WORKSPACE_ID: 'ws1', SARVAM_APP_ID: 'agent1', SARVAM_APP_VERSION: '2',
+  SARVAM_CONNECTION_ID: 'conn1', SARVAM_AGENT_NUMBER: '+918064270600', VOICE_WEBHOOK_TOKEN: 'hook-token', VOICE_HOOK_SECRET: 'ctx-secret',
+  VOICE_CALL_HOURS: '00:00-24:00',
 })
 
 // ── fake render service ────────────────────────────────────────────────────
@@ -549,9 +552,149 @@ const textOf = (msgs) => msgs.map((m) => m.text?.body ?? `[${m.type}]`).join(' |
   check('Meta retry of the same message processed once', sentTo(WA).length - dd === 1, String(sentTo(WA).length - dd))
 }
 
+section('Voice calls (Sarvam)')
+{
+  const callOut = (token, body) => call('POST', '/api/voice/call', { token, body })
+  const hook = (body, token = 'hook-token') => call('POST', `/api/voice/webhook?token=${token}`, { body })
+  const ctx = (body, secret = 'ctx-secret') => call('POST', '/api/voice/context', { body, headers: secret ? { Authorization: `Bearer ${secret}` } : {} })
+  const vrow = (id) => row('voice_calls', (c) => c.id === id)
+  const waTo = (n) => net.graph.filter((g) => g.to === n)
+
+  let r = await call('POST', '/api/voice/call', { body: {} })
+  check('call without login → 401', r.status === 401)
+  r = await callOut(priya.token, {})
+  check('first call without consent → consent_required, nothing dialled', r.status === 400 && r.json?.error === 'consent_required' && net.sarvam.length === 0)
+
+  process.env.VOICE_CALL_HOURS = '00:00-00:00'
+  r = await callOut(priya.token, { consent: true })
+  check('outside calling hours → outside_hours', r.status === 422 && r.json?.error === 'outside_hours' && net.sarvam.length === 0)
+  check('consent saved once given', !!row('users', (u) => u.phone_number === PRIYA).voice_consent_at)
+  process.env.VOICE_CALL_HOURS = '00:00-24:00'
+
+  const us = await signUp('+12025550199', 'Sam')
+  r = await callOut(us.token, { consent: true })
+  check('non-Indian number → unsupported_number', r.status === 422 && r.json?.error === 'unsupported_number')
+
+  const pendingRep = await upload(priya.token, 'lab.pdf', 'application/pdf')
+  r = await callOut(priya.token, { reportId: pendingRep.json.report.id })
+  check('call about an unanalysed report → not_ready', r.status === 409 && r.json?.error === 'not_ready')
+  const ravi = await signUp('+919866666660', 'Ravi')
+  r = await callOut(ravi.token, { consent: true, reportId: rep1 })
+  check("call about someone else's report → not_found", r.status === 404 && net.sarvam.length === 0)
+
+  r = await callOut(priya.token, { reportId: rep1, language: 'hi' })
+  const c1 = r.json?.callId
+  const req1 = net.sarvam.at(-1)
+  check('"Call me" → 200 calling', r.status === 200 && r.json?.status === 'calling' && !!c1, r.text)
+  check('Sarvam: right URL + API key header', req1?.url === 'https://apps.sarvam.ai/api/outbounds/v1/orgs/org1/workspaces/ws1/outbounds' && req1.headers['X-API-Key'] === 'sarvam-key')
+  const b = req1.body, v = b.app_config.agent_variables
+  check('Sarvam: agent, version, connection, our number', b.app_config.app_id === 'agent1' && b.app_config.app_version === 2 && b.app_config.connection_config.connection_id === 'conn1' && b.app_config.connection_config.agent_phone_number === '+918064270600')
+  check('Sarvam: dials the registered number (E.164)', b.user_config.user_phone_number === PRIYA)
+  check('Sarvam: starts in Hindi when asked', b.app_config.app_overrides.initial_language_name === 'Hindi' && v.preferred_language === 'Hindi')
+  check('agent variables: name + registered', v.registered === 'yes' && v.first_name === 'Priya')
+  check('agent variables: report findings in plain words', v.reports.includes('Complete Blood Count') && v.reports.includes('Haemoglobin') && v.reports.includes('Carries oxygen'))
+  check('agent variables: the report the user asked about', v.focus_report.startsWith('Complete Blood Count'))
+  check('agent variables: all strings, bounded size', Object.values(v).every((x) => typeof x === 'string') && v.reports.length <= 6000)
+  check('webhook URL carries token + call id', b.webhook_config.url === `${BASE}/api/voice/webhook?token=hook-token` && b.webhook_config.metadata.call_id === c1)
+  check('DB: call row calling with attempt id', vrow(c1)?.status === 'calling' && vrow(c1).sarvam_attempt_id === 'att-' + net.sarvam.length && vrow(c1).language === 'hi')
+
+  r = await callOut(priya.token, {})
+  check('second call while one is ringing → call_in_progress', r.status === 409 && r.json?.error === 'call_in_progress')
+  r = await call('GET', '/api/voice/calls', { token: priya.token })
+  check('calls list shows it', r.json?.calls?.[0]?.id === c1 && r.json.calls[0].status === 'calling')
+  r = await call('GET', `/api/voice/calls/${c1}`, { token: ravi.token })
+  check("another user can't read my call", r.status === 404)
+
+  r = await hook({ attempt_id: 'att-1', status: 'connected' }, 'wrong')
+  check('webhook with wrong token → 401, nothing changes', r.status === 401 && vrow(c1).status === 'calling')
+  r = await hook({ attempt_id: 'att-unknown', status: 'connected' })
+  check('webhook for an unknown call is ignored', r.status === 200 && r.json?.applied === false)
+
+  const transcript = [
+    { role: 'agent', en_text: 'Namaste Priya ji', indic_text: 'नमस्ते प्रिया जी' },
+    { role: 'user', en_text: 'is my sugar okay', indic_text: 'मेरी शुगर ठीक है?' },
+    { role: 'agent', en_text: 'Your fasting sugar is high, please see a doctor.' },
+  ]
+  const waBefore = waTo(WA).length
+  r = await hook({ attempt_id: req1.body && vrow(c1).sarvam_attempt_id, status: 'connected', duration: 184.5, interaction_id: 'int-1', interaction_transcript: transcript, webhook_config: b.webhook_config })
+  check('connected webhook → completed + duration + transcript (in Hindi where given)', r.json?.applied === true && vrow(c1).status === 'completed' && vrow(c1).duration_sec === 184.5 && vrow(c1).transcript[1].text === 'मेरी शुगर ठीक है?' && vrow(c1).transcript[2].text.startsWith('Your fasting'))
+  await waitFor(() => vrow(c1).whatsapp_sent)
+  check('summary written in the call language', vrow(c1).summary === 'CallSummary(hi): you asked about sugar.' && vrow(c1).urgent === false, vrow(c1).summary)
+  check('summary sent on WhatsApp', waTo(WA).length === waBefore + 1 && /सारांश[\s\S]*CallSummary/.test(waTo(WA).at(-1).text.body))
+  r = await hook({ attempt_id: vrow(c1).sarvam_attempt_id, status: 'connected', interaction_transcript: transcript })
+  await new Promise((res) => setTimeout(res, 200))
+  check('Sarvam retry of the same webhook → processed once', r.status === 200 && waTo(WA).length === waBefore + 1)
+  r = await call('GET', `/api/voice/calls/${c1}`, { token: priya.token })
+  check('call detail has summary + transcript', r.json?.call?.summary?.startsWith('CallSummary') && r.json.call.transcript.length === 3)
+
+  // The webhook can arrive before we have stored the attempt id — metadata.call_id still finds the row.
+  r = await callOut(priya.token, {})
+  const c2 = r.json.callId
+  vrow(c2).sarvam_attempt_id = null
+  r = await hook({ attempt_id: 'att-race', status: 'no_answer', failure_reason: null, webhook_config: { metadata: { call_id: c2 } } })
+  check('early webhook matched by call id; no answer → no_answer, no summary', r.json?.applied === true && vrow(c2).status === 'no_answer' && !vrow(c2).summary)
+
+  r = await callOut(priya.token, {})
+  const c3 = r.json.callId
+  await hook({ attempt_id: vrow(c3).sarvam_attempt_id, status: 'failed', failure_reason: 'exotel: Phone number is registered under TRAI NDNC' })
+  check('DND failure reason stored', vrow(c3).status === 'failed' && /NDNC/.test(vrow(c3).failure_reason))
+  r = await callOut(priya.token, {})
+  check('4th call in an hour → too_many_calls', r.status === 429 && r.json?.error === 'too_many_calls')
+
+  const anil = await signUp('+919888888881', 'Anil Kumar')
+  await analysedReport(anil.token)
+  net.sarvamMode = 'down'
+  r = await callOut(anil.token, { consent: true })
+  const lost = T.voice_calls.filter((c) => c.user_id === anil.user.id).at(-1)
+  check('Sarvam unreachable → 502 call_unavailable, row marked failed', r.status === 502 && r.json?.error === 'call_unavailable' && lost.status === 'failed' && lost.failure_reason === 'not_started')
+  net.sarvamMode = '422'
+  r = await callOut(anil.token, {})
+  check('Sarvam rejects request → 502 call_unavailable (and can retry)', r.status === 502 && r.json?.error === 'call_unavailable')
+  net.sarvamMode = 'ok'
+  r = await callOut(anil.token, { language: 'xx' })
+  const c4 = r.json?.callId
+  check('unknown language falls back to profile language (English)', r.status === 200 && net.sarvam.at(-1).body.app_config.app_overrides.initial_language_name === 'English')
+  vrow(c4).created_at = new Date(Date.now() - 20 * 60 * 1000).toISOString()
+  r = await call('GET', '/api/voice/calls', { token: anil.token })
+  check('call with no webhook after 15 min shows as failed', r.json?.calls?.[0]?.status === 'failed')
+  r = await callOut(anil.token, {})
+  check('…and does not block a new call', r.status === 200, r.text)
+
+  // On-start hook for incoming calls
+  r = await ctx({ phone: PRIYA }, null)
+  check('context hook without secret → 401', r.status === 401)
+  r = await ctx({ phone: PRIYA }, 'wrong')
+  check('context hook with wrong secret → 401', r.status === 401)
+  r = await ctx({})
+  check('context hook with no number → 400 (keeps variables sent with the call)', r.status === 400)
+  r = await ctx({ phone: '+919000000001' })
+  check('unknown caller → registered "no", no report data', r.json?.registered === 'no' && r.json.reports === '' && r.json.first_name === '')
+  r = await ctx({ phone: PRIYA })
+  check('registered caller → name + reports', r.json?.registered === 'yes' && r.json.first_name === 'Priya' && r.json.reports.includes('Haemoglobin'))
+  r = await ctx({ phone: '91 98111 11111' })
+  check('caller number without + / with spaces still matches', r.json?.registered === 'yes')
+
+  // Inbound deployment webhook (no attempt_id, no status)
+  const inbound = { interaction_id: 'in-1', user_phone_number: PRIYA, duration: 60, start_datetime: new Date().toISOString(), final_agent_variables: { language_name: 'Hindi' }, interaction_transcript: [{ role: 'user', en_text: 'I have chest pain and my sugar is high' }] }
+  r = await hook(inbound)
+  const inRow = row('voice_calls', (c) => c.interaction_id === 'in-1')
+  check('incoming call stored for the caller', r.json?.applied === true && inRow?.direction === 'inbound' && inRow.user_id === priya.user.id && inRow.language === 'hi')
+  await waitFor(() => inRow.summary)
+  check('urgent symptoms flagged', inRow.urgent === true)
+  await hook(inbound)
+  check('incoming webhook retry → one row', T.voice_calls.filter((c) => c.interaction_id === 'in-1').length === 1)
+  const graphBefore = net.graph.length
+  r = await hook({ interaction_id: 'in-2', user_phone_number: '+919000000002', interaction_transcript: [{ role: 'user', en_text: 'hello' }] })
+  await new Promise((res) => setTimeout(res, 200))
+  const anon = row('voice_calls', (c) => c.interaction_id === 'in-2')
+  check('unknown caller stored without a user; no summary, no WhatsApp', anon?.user_id === null && !anon.summary && net.graph.length === graphBefore)
+  r = await call('GET', '/api/voice/calls', { token: priya.token })
+  check("caller's list includes incoming calls", r.json?.calls?.some((c) => c.direction === 'inbound'))
+}
+
 section('Logs carry no report content')
 {
-  const leaks = serverLog.filter((l) => /Haemoglobin|haemoglobin|11\.2|1,50,000|How is my|mera sugar|what is my sugar|Priya Sharma/.test(l))
+  const leaks = serverLog.filter((l) => /Haemoglobin|haemoglobin|11\.2|1,50,000|How is my|mera sugar|what is my sugar|is my sugar okay|chest pain|CallSummary|Priya Sharma/.test(l))
   check('no report values, questions or names in server logs', leaks.length === 0, leaks.slice(0, 3).join(' || '))
   const crashes = serverLog.filter((l) => /Unhandled rejection|TypeError|ReferenceError/.test(l))
   check('no unhandled errors logged anywhere', crashes.length === 0, crashes.slice(0, 3).join(' || '))
