@@ -594,7 +594,7 @@ section('Voice calls (Sarvam)')
   check('agent variables: name + registered', v.registered === 'yes' && v.first_name === 'Priya')
   check('agent variables: report findings in plain words', v.reports.includes('Complete Blood Count') && v.reports.includes('Haemoglobin') && v.reports.includes('Carries oxygen'))
   check('agent variables: the report the user asked about', v.focus_report.startsWith('Complete Blood Count'))
-  check('agent variables: all strings, bounded size', Object.values(v).every((x) => typeof x === 'string') && v.reports.length <= 6000)
+  check('agent variables: all strings, bounded size', Object.values(v).every((x) => typeof x === 'string') && v.reports.length <= 8000)
   check('webhook URL carries token + call id', b.webhook_config.url === `${BASE}/api/voice/webhook?token=hook-token` && b.webhook_config.metadata.call_id === c1)
   check('DB: call row calling with attempt id', vrow(c1)?.status === 'calling' && vrow(c1).sarvam_attempt_id === 'att-' + net.sarvam.length && vrow(c1).language === 'hi')
 
@@ -659,6 +659,23 @@ section('Voice calls (Sarvam)')
   check('call with no webhook after 15 min shows as failed', r.json?.calls?.[0]?.status === 'failed')
   r = await callOut(anil.token, {})
   check('…and does not block a new call', r.status === 200, r.text)
+
+  // Many long reports: every one is named, newest first; detail is trimmed, never whole reports.
+  const meena = await signUp('+919888888882', 'Meena')
+  const ids = []
+  for (let i = 0; i < 7; i++) ids.push((await analysedReport(meena.token)).id)
+  ids.forEach((id, i) => {
+    const rr = row('reports', (x) => x.id === id)
+    rr.report_date = `2025-0${i + 1}-15`
+    rr.report_title = `Panel ${i + 1}`
+    rr.structured_data = Array.from({ length: 80 }, (_, k) => ({ test: `Marker number ${k}`, value: String(k), unit: 'mg/dL', normal_range: '0 - 100', flag: 'NORMAL' }))
+  })
+  r = await callOut(meena.token, { consent: true, reportId: ids[0] })
+  const mv = net.sarvam.at(-1).body.app_config.agent_variables
+  check('all 7 reports named and counted', mv.report_count === '7' && [1, 2, 3, 4, 5, 6, 7].every((n) => mv.reports.includes(`Panel ${n} (`)), mv.report_count)
+  check('index is newest first', mv.reports.indexOf('1. Panel 7') > -1 && mv.reports.indexOf('1. Panel 7') < mv.reports.indexOf('7. Panel 1'))
+  check('asked-about (oldest) report gets full findings first', mv.focus_report.startsWith('Panel 1') && mv.reports.indexOf('Report: Panel 1') < mv.reports.indexOf('Report: Panel 7'))
+  check('context stays within 8000 chars with summaries kept', mv.reports.length <= 8000 && (mv.reports.match(/Summary:/g) ?? []).length === 5, String(mv.reports.length))
 
   // On-start hook for incoming calls
   r = await ctx({ phone: PRIYA }, null)

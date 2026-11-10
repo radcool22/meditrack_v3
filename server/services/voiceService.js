@@ -24,7 +24,7 @@ function callWindow() {
 }
 
 const MAX_REPORTS = 5
-const MAX_CONTEXT_CHARS = 6000
+const MAX_CONTEXT_CHARS = 8000
 
 function voiceError(code) {
   return Object.assign(new Error(code), { code })
@@ -66,22 +66,26 @@ async function latestAnalysis(reportId) {
 
 // The agent only relays what MediTrack's analysis already says — it is given
 // plain-language findings, not raw numbers to reason about from scratch.
-function reportBlock(r, analysis) {
-  const lines = [`Report: ${r.report_title || r.file_name} (${dateLabel(r)})`]
+// detail 2 = everything, 1 = without the normal values, 0 = summary + flags only.
+function reportBlock(r, analysis, detail = 2) {
+  const lines = [`Report: ${reportName(r)}`]
   if (analysis?.summary) lines.push(`Summary: ${analysis.summary}`)
   const abnormal = analysis?.abnormal_values ?? []
   if (abnormal.length) {
     lines.push('Outside the normal range:')
-    for (const a of abnormal) lines.push(`- ${a.test}: ${a.value} (normal ${a.normal_range || 'not printed'}). ${a.plain_explanation ?? ''}`.trim())
+    for (const a of abnormal) lines.push(`- ${a.test}: ${a.value} (normal ${a.normal_range || 'not printed'}). ${detail > 0 ? a.plain_explanation ?? '' : ''}`.trim())
   } else {
     lines.push('Outside the normal range: nothing.')
   }
   const tests = Array.isArray(r.structured_data) ? r.structured_data : []
   const normal = tests.filter((t) => !abnormal.some((a) => a.test === t.test)).map((t) => `${t.test} ${t.value}${t.unit ? ' ' + t.unit : ''}`)
-  if (normal.length) lines.push(`Other values: ${normal.join('; ')}.`)
-  if (analysis?.suggestions?.length) lines.push(`Suggestions: ${analysis.suggestions.join(' ')}`)
+  if (detail > 1 && normal.length) lines.push(`Other values (normal): ${normal.join('; ')}.`)
+  if (detail > 0 && analysis?.suggestions?.length) lines.push(`Suggestions: ${analysis.suggestions.join(' ')}`)
   return lines.join('\n')
 }
+
+const reportName = (r) => `${r.report_title || r.file_name} (${dateLabel(r)})`
+const reportTime = (r) => new Date(r.report_date ?? r.uploaded_at).getTime()
 
 /**
  * Agent variables for one caller. Every value is a string (Sarvam's variables
@@ -92,42 +96,40 @@ export async function buildAgentVariables(user, focusReportId = null, language =
 
   const { data: reports } = await supabase
     .from('reports')
-    .select('id, file_name, report_title, report_date, uploaded_at, structured_data')
+    .select('id, file_name, report_title, report_date, uploaded_at')
     .eq('user_id', user.id)
     .eq('status', 'done')
-    .order('uploaded_at', { ascending: false })
-    .limit(MAX_REPORTS)
 
-  let rows = reports ?? []
-  // The report the user tapped "Call me about this" on always goes in, first.
-  if (focusReportId && !rows.some((r) => r.id === focusReportId)) {
-    const { data: focusRow } = await supabase
-      .from('reports')
-      .select('id, file_name, report_title, report_date, uploaded_at, structured_data')
-      .eq('id', focusReportId)
-      .eq('user_id', user.id)
-      .eq('status', 'done')
-      .maybeSingle()
-    if (focusRow) rows = [focusRow, ...rows.slice(0, MAX_REPORTS - 1)]
-  } else if (focusReportId) {
-    rows = [rows.find((r) => r.id === focusReportId), ...rows.filter((r) => r.id !== focusReportId)]
+  // Newest report date first (the date printed on the report, else upload date).
+  const all = (reports ?? []).sort((a, b) => reportTime(b) - reportTime(a))
+  const focus = all.find((r) => r.id === focusReportId) ?? null
+  // Full detail for the newest few; the report the user asked about always goes first.
+  const picked = (focus ? [focus, ...all.filter((r) => r !== focus)] : all).slice(0, MAX_REPORTS)
+
+  const details = await Promise.all(picked.map(async (r) => {
+    const { data } = await supabase.from('reports').select('structured_data').eq('id', r.id).maybeSingle()
+    return { report: { ...r, structured_data: data?.structured_data }, analysis: await latestAnalysis(r.id) }
+  }))
+
+  // Every report is always named, so the agent can list them all.
+  const index = all.length
+    ? `All reports on file (${all.length}), newest first:\n${all.map((r, i) => `${i + 1}. ${reportName(r)}`).join('\n')}`
+    : ''
+  const levels = details.map(() => 2)
+  const render = () => [index, ...details.map((d, i) => reportBlock(d.report, d.analysis, levels[i]))].join('\n\n')
+  // Too long: trim detail from the oldest report up, never drop a report.
+  for (const level of [1, 0]) {
+    for (let i = levels.length - 1; i >= 0 && render().length > MAX_CONTEXT_CHARS; i--) levels[i] = level
   }
-  const blocks = await Promise.all(rows.map(async (r) => reportBlock(r, await latestAnalysis(r.id))))
+  let text = render()
+  if (text.length > MAX_CONTEXT_CHARS) text = text.slice(0, MAX_CONTEXT_CHARS)
 
-  // Newest first, so if the text has to be cut, the oldest report goes.
-  let text = ''
-  for (const b of blocks) {
-    if ((text + '\n\n' + b).length > MAX_CONTEXT_CHARS) break
-    text = text ? `${text}\n\n${b}` : b
-  }
-
-  const focus = focusReportId ? rows.find((r) => r.id === focusReportId) : null
   return {
     registered:   'yes',
     first_name:   user.name?.trim().split(/\s+/)[0] ?? '',
-    reports:      text || 'No analysed reports yet.',
-    report_count: String(rows.length),
-    focus_report: focus ? `${focus.report_title || focus.file_name} (${dateLabel(focus)})` : '',
+    reports:      all.length ? text : 'No analysed reports yet.',
+    report_count: String(all.length),
+    focus_report: focus ? reportName(focus) : '',
     preferred_language: SARVAM_LANGUAGE[language] ?? 'English',
   }
 }
