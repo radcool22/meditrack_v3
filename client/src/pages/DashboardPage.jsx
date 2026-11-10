@@ -13,6 +13,9 @@ import ChatPanel from '../components/ChatPanel'
 import LangToggle from '../components/LangToggle'
 import VideoModal from '../components/VideoModal'
 import VideoAgeModal from '../components/VideoAgeModal'
+import CallMeCard from '../components/CallMeCard'
+import CallHistory from '../components/CallHistory'
+import { takeCallIntent } from '../utils/callApi'
 
 function formatReportDate(report) {
   if (report.report_date) {
@@ -91,6 +94,17 @@ export default function DashboardPage() {
   const [generateAttempts, setGenerateAttempts] = useState({})
 
   const reportsRef = useRef(null)
+  const callRef = useRef(null)
+  const [highlightCall, setHighlightCall] = useState(false)
+
+  // Arrived from a "Call me" button on meditrack.in: bring the Call card into view.
+  useEffect(() => {
+    if (!takeCallIntent()) return
+    setHighlightCall(true)
+    requestAnimationFrame(() => callRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+    const t = setTimeout(() => setHighlightCall(false), 3000)
+    return () => clearTimeout(t)
+  }, [])
 
   const { videoStatus, videoUrl, videoError, notifyGenerating } = useVideoStatus(activeVideoReportId)
 
@@ -210,6 +224,10 @@ export default function DashboardPage() {
         ) : (
           user && <NamePrompt token={token} onSaved={updateUser} />
         )}
+
+        {/* ── Phone call (first, like on meditrack.in) ─────────── */}
+        <CallMeCard ref={callRef} disabled={!loading && !hasDoneReports} highlight={highlightCall} />
+        <CallHistory />
 
         <section id="upload-section">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-4">

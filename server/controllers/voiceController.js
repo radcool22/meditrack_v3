@@ -25,7 +25,7 @@ export async function startCall(req, res) {
   const { reportId, language, consent } = req.body ?? {}
   try {
     const { callId } = await requestCall(req.user.userId, { reportId: reportId || null, language, consent: consent === true })
-    return res.json({ callId, status: 'calling' })
+    return res.json({ callId, status: 'calling', from: process.env.SARVAM_AGENT_NUMBER })
   } catch (err) {
     const status = ERROR_STATUS[err.code]
     if (!status) {

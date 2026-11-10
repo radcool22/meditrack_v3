@@ -11,6 +11,7 @@ import LangToggle from '../components/LangToggle'
 import ChatPanel from '../components/ChatPanel'
 import VideoModal from '../components/VideoModal'
 import VideoAgeModal from '../components/VideoAgeModal'
+import CallMeCard from '../components/CallMeCard'
 
 function formatDate(dateStr) {
   if (!dateStr) return 'Date unknown'
@@ -195,6 +196,9 @@ export default function ReportPage() {
               </h2>
               <p className="text-[15px] text-ink-900 leading-relaxed">{analysis.summary}</p>
             </section>
+
+            {/* Phone call about this report */}
+            {status === 'done' && <CallMeCard variant="compact" reportId={id} />}
 
             {/* ── 3. Video Summary section (above chat) ─────────── */}
             <section>

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import axios from '../utils/axios'
+import { hasCallIntent } from '../utils/callApi'
 
 const INDIA_RE = /^[6-9]\d{9}$/
 const USA_RE   = /^\d{10}$/
@@ -16,6 +17,7 @@ const COUNTRY_CODES = [
 
 export default function LoginPage() {
   const { t } = useTranslation()
+  const [callIntent] = useState(hasCallIntent)
   const { login, loading: authLoading } = useAuth()
   const navigate = useNavigate()
 
@@ -168,6 +170,11 @@ export default function LoginPage() {
         <div className="mb-7 text-center">
           <img src={logo} alt="Meditrack" className="h-10 mx-auto mb-3" />
           <p className="text-ink-400 text-[15px] font-medium">{t('login_tagline')}</p>
+          {callIntent && (
+            <p className="mt-4 text-[14px] font-medium text-ink-900 rounded-xl px-4 py-3" style={{ background: 'rgba(199,243,108,0.35)' }}>
+              Log in, then tap <b>Call me now</b> — MediTrack will ring your phone.
+            </p>
+          )}
         </div>
 
         {step === 'phone' && (

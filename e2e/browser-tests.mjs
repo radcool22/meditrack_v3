@@ -23,6 +23,8 @@ Object.assign(process.env, {
   OPENAI_API_KEY: 'x', GOOGLE_CLOUD_API_KEY: 'x', ELEVENLABS_API_KEY: 'x', TWILIO_ACCOUNT_SID: 'ACx', TWILIO_AUTH_TOKEN: 'x', TWILIO_PHONE_NUMBER: '+10000000000',
   APP_BASE_URL: BASE, RENDER_SERVICE_URL: `http://127.0.0.1:${RENDER_PORT}`, RENDER_API_KEY: 'render-key',
   CALLBACK_SHARED_SECRET: 'cb-secret', R2_PUBLIC_URL: 'https://videos.example',
+  SARVAM_API_KEY: 'sarvam-key', SARVAM_ORG_ID: 'org1', SARVAM_WORKSPACE_ID: 'ws1', SARVAM_APP_ID: 'agent1', SARVAM_APP_VERSION: '3',
+  SARVAM_CONNECTION_ID: 'conn1', SARVAM_AGENT_NUMBER: '+918064270600', VOICE_WEBHOOK_TOKEN: 'hook-token', VOICE_CALL_HOURS: '00:00-24:00',
 })
 
 const render = { mode: 'ok', jobs: [] }
@@ -115,6 +117,11 @@ function check(name, ok, detail = '') {
 }
 const section = (t) => console.info(`\n── ${t}`)
 const lastCode = (to) => [...sms].reverse().find((m) => m.to === to)?.body.match(/\d{6}/)?.[0]
+// Sarvam's post-call webhook for the most recent call still ringing.
+async function endCall(fields) {
+  const live = [...db.tables.voice_calls].reverse().find((c) => c.status === 'calling')
+  await fetch(BASE + '/api/voice/webhook?token=hook-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ attempt_id: live.sarvam_attempt_id, ...fields }) })
+}
 const cb = (body) => fetch(BASE + '/api/videos/callback', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer cb-secret' }, body: JSON.stringify(body) })
 
 try {
@@ -172,6 +179,68 @@ try {
   await type('input[placeholder="Type your question…"]', 'What is haemoglobin?')
   await click('Send')
   check('report chat answers', await waitText('Reply(auto): What is haemoglobin?'), await text())
+
+  section('Phone call — dashboard')
+  const sarvam = globalThis.__net.sarvam
+  await goto(BASE + '/dashboard')
+  check('Call card on the dashboard', await waitText('Talk to MediTrack on the phone'), await text())
+  check('Call card comes before upload', await js(`!!(document.getElementById('call-me').compareDocumentPosition(document.getElementById('upload-section')) & Node.DOCUMENT_POSITION_FOLLOWING)`))
+  check('card names the number and language', (await text()).includes('+91 98000 00001') && (await text()).includes('English'))
+  check('dashboard with Call card fits 375px', await noSideScroll())
+  await shot('20-call-card')
+  await click('Call me now')
+  check('first call asks for consent', await waitText('Before we call you'), await text())
+  check('consent sheet fits 375px', await noSideScroll())
+  await shot('21-call-consent')
+  await click('Not now')
+  await new Promise((r) => setTimeout(r, 300))
+  check('"Not now" closes it and nothing is dialled', !(await text()).includes('Before we call you') && sarvam.length === 0)
+  await click('Call me now')
+  await waitText('Before we call you')
+  await click('Agree and call me')
+  check('agree → calling state', await waitText('Calling +91 98000 00001'), await text())
+  check('shows the number that will ring', (await text()).includes('+91 80642 70600'))
+  check('Sarvam dialled the account number', sarvam.length === 1 && sarvam[0].body.user_config.user_phone_number === '+919800000001')
+  check('"Your calls" shows it ringing', await waitText('Calling…'))
+  await shot('22-calling')
+  await goto(BASE + '/dashboard')
+  check('a ringing call survives a page refresh', await waitText('Calling +91 98000 00001'), await text())
+  await endCall({ status: 'connected', duration: 95, interaction_transcript: [{ role: 'agent', en_text: 'Namaste Meera ji' }, { role: 'user', en_text: 'Is my sugar fine?' }] })
+  check('call ends → finished with duration', await waitText('Call finished', 12000) && (await text()).includes('1 min 35 sec'), await text())
+  check('summary appears on the card', await waitText('CallSummary(en)', 40000), await text())
+  await shot('23-call-done')
+  await js(`[...document.querySelectorAll('button[aria-expanded]')][0].click()`)
+  await click('Show what was said')
+  check('history row opens summary and transcript', await waitText('MediTrack: Namaste Meera ji') && (await text()).includes('You: Is my sugar fine?'), await text())
+  await shot('24-call-history')
+  await click('Done')
+  check('"Done" returns to the Call card', await waitText('Call me now'))
+  await click('Call me now')
+  check('second call needs no consent again', await waitText('Calling +91 98000 00001') && !(await text()).includes('Before we call you'))
+  await endCall({ status: 'no_answer' })
+  check('missed call explained', await waitText("You didn't pick up", 12000), await text())
+  process.env.VOICE_CALL_HOURS = '00:00-00:00'
+  await click('Try again')
+  check('outside calling hours explained', await waitText('MediTrack calls between 8 am and 9:30 pm'), await text())
+  process.env.VOICE_CALL_HOURS = '00:00-24:00'
+
+  section('Phone call — report page')
+  const callReport = db.tables.reports.find((r) => r.status === 'done')
+  await goto(`${BASE}/report/${callReport.id}`)
+  check('report page offers a call about this report', await waitText('Talk about this report on the phone'), await text())
+  check('report page with call button fits 375px', await noSideScroll())
+  await click('Call me')
+  check('report call → calling state', await waitText('Calling +91 98000 00001'), await text())
+  check('Sarvam told which report', sarvam.at(-1).body.app_config.agent_variables.focus_report.startsWith('Complete Blood Count'))
+  await shot('25-report-calling')
+  await endCall({ status: 'busy' })
+  check('busy line explained', await waitText('Your line was busy', 12000), await text())
+
+  section('Phone call — from meditrack.in')
+  await goto(BASE + '/?call=1')
+  check('?call=1 lands on the dashboard Call card, highlighted', await waitText('Talk to MediTrack on the phone') && await js(`document.getElementById('call-me').className.includes('ring-4')`))
+  await goto(`${BASE}/report/${callReport.id}`)
+  await waitText('Your blood report shows')
 
   section('Video — success path')
   await click('Generate Video')
@@ -276,6 +345,7 @@ try {
   await goto(BASE + '/dashboard')
   check('dashboard renders on laptop', await waitText('Hello, Meera'))
   check('dashboard: no sideways scroll on laptop', await noSideScroll())
+  check('Call card + call history on laptop', (await text()).includes('Talk to MediTrack on the phone') && await waitText('YOUR CALLS'))
   await shot('14-desktop-dashboard')
   const anyReport = db.tables.reports.find((r) => r.status === 'done')
   await goto(`${BASE}/report/${anyReport.id}`)
@@ -291,6 +361,10 @@ try {
   await type('input[type=tel]', '9800000001')
   await click('Send OTP')
   check('"Sign Up" with existing number → OTP sent silently', await waitText('OTP sent to +919800000001') && !(await text()).includes('already registered'), await text())
+
+  await goto(BASE + '/?call=1')
+  check('logged out + ?call=1 → login says what happens next', await waitText('Log in, then tap Call me now'), await text())
+  await shot('26-login-call-intent')
 
   section('Old debug page')
   await goto(BASE + '/test-voice')
