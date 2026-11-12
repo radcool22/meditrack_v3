@@ -229,7 +229,7 @@ Never log raw report content; only structured JSON after parsing
 ## Voice Calls (Sarvam)
 
 - Sarvam Voice Agents runs the conversation; setup, prompt and secrets are in `docs/voice-agent-setup.md`. Code: `server/services/voiceService.js`, routes under `/api/voice`.
-- "Call me" (`POST /api/voice/call`) needs one-time consent (`users.voice_consent_at`), a dialable number (`VOICE_ALLOWED_PREFIXES`), calling hours (`VOICE_CALL_HOURS`, IST), 3/hour and 10/day, one call at a time. Calls that never started don't count.
+- "Call me" (`POST /api/voice/call`) needs one-time consent (`users.voice_consent_at`), a dialable number (`VOICE_ALLOWED_PREFIXES`), calling hours (`VOICE_CALL_HOURS`, IST), 3/hour and 10/day (`VOICE_CALLS_PER_HOUR` / `VOICE_CALLS_PER_DAY`), one call at a time. Calls that never started don't count.
 - The agent gets the caller's latest 5 analysed reports as plain-language agent variables (≤6000 chars); the report the user asked about always goes first. Incoming calls get the same via the on-start hook `POST /api/voice/context` (bearer `VOICE_HOOK_SECRET`).
 - Sarvam doesn't sign webhooks: `POST /api/voice/webhook?token=VOICE_WEBHOOK_TOKEN`. Idempotent by attempt_id / interaction_id. After a completed call we write a summary in the call language and copy it to WhatsApp (works only inside Meta's 24 h window).
 - A `calling` row with no webhook after 15 min (`STALE_CALLING_MS`) reads as failed. Never log transcripts or Sarvam error bodies.

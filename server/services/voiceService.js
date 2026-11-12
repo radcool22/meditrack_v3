@@ -12,8 +12,11 @@ const SARVAM_BASE = 'https://apps.sarvam.ai/api/outbounds/v1'
 // Our language codes → Sarvam's initial_language_name values.
 const SARVAM_LANGUAGE = { en: 'English', hi: 'Hindi', mr: 'Marathi', gu: 'Gujarati', ml: 'Malayalam' }
 
-export const CALLS_PER_HOUR = 3
-export const CALLS_PER_DAY = 10
+// Per-user call limits; VOICE_CALLS_PER_HOUR / VOICE_CALLS_PER_DAY override them (e.g. for demos).
+function callLimit(name, fallback) {
+  const n = Number(process.env[name])
+  return Number.isInteger(n) && n > 0 ? n : fallback
+}
 // No webhook within this window means the call was lost; the user may call again.
 export const STALE_CALLING_MS = 15 * 60 * 1000
 // "Call me" is only offered during sociable hours, India time ("HH:MM-HH:MM").
@@ -244,8 +247,8 @@ export async function requestCall(userId, { reportId = null, language, consent =
   const calls = (recent ?? []).filter((c) => c.failure_reason !== 'not_started').map(settleStaleCall)
   if (calls.some((c) => c.status === 'calling')) throw voiceError('call_in_progress')
   const hourAgo = Date.now() - 60 * 60 * 1000
-  if (calls.filter((c) => new Date(c.created_at).getTime() > hourAgo).length >= CALLS_PER_HOUR) throw voiceError('too_many_calls')
-  if (calls.length >= CALLS_PER_DAY) throw voiceError('too_many_calls')
+  if (calls.filter((c) => new Date(c.created_at).getTime() > hourAgo).length >= callLimit('VOICE_CALLS_PER_HOUR', 3)) throw voiceError('too_many_calls')
+  if (calls.length >= callLimit('VOICE_CALLS_PER_DAY', 10)) throw voiceError('too_many_calls')
 
   const lang = isSupported(language) ? language : (isSupported(user.language_preference) ? user.language_preference : 'en')
 
