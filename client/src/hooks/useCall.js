@@ -86,6 +86,7 @@ export function useCall(reportId = null) {
     start:          () => place(false),
     confirmConsent: () => place(true),
     cancelConsent:  () => setPhase('idle'),
-    reset:          () => { setCall(null); setError(''); setPhase('idle') },
+    // Stop any summary polling too, or a late poll flips the card back to "ended".
+    reset:          () => { stopPolling(); setCall(null); setError(''); setPhase('idle') },
   }
 }
