@@ -12,3 +12,13 @@ Built for people in India who find lab reports hard to read, in English, Hindi, 
 - **WhatsApp** — send a report photo and ask questions on WhatsApp.
 - **Phone calls** — tap *Call me* and the MediTrack voice agent (Sarvam) rings you and talks through your reports; a summary is saved afterwards.
 - **Phone login** — no passwords; sign in with an SMS code (Twilio).
+
+## Running locally
+
+```bash
+npm install && npm install --prefix client && npm install --prefix server
+cp server/.env.example server/.env   # then fill in the keys
+npm run dev                          # client on :3000, server on :5001
+```
+
+Database migrations are in `server/migrations/` — run them in the Supabase SQL editor.
