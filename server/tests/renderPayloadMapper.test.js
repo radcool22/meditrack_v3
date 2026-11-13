@@ -51,3 +51,18 @@ test('buildRenderPayload splits the report title into type and lab', () => {
   assert.equal(p.report.lab, 'Dr Lal PathLabs')
   assert.equal(p.report.date, '2026-10-01')
 })
+
+test('buildRenderPayload leaves missing details empty instead of inventing them', () => {
+  const p = buildRenderPayload({ report: { id: 'r2' }, structuredData: null, user: { name: '  ' }, ageYears: '52' })
+  assert.equal(p.report.type, 'Medical Report')
+  assert.equal(p.report.lab, '')
+  assert.equal(p.report.date, '')
+  assert.equal(p.patient.firstName, '')
+  assert.equal(p.patient.ageYears, 52)
+  assert.deepEqual(p.findings, [])
+})
+
+test('buildRenderPayload uses only the first name', () => {
+  const p = buildRenderPayload({ report, structuredData: [], user: { name: ' Asha  Rani Verma ' }, ageYears: 60 })
+  assert.equal(p.patient.firstName, 'Asha')
+})
