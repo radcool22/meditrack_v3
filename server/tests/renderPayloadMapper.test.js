@@ -125,3 +125,10 @@ test('platelet counts are critical in every way Indian labs print them', () => {
   assert.equal(statusOf('Platelet Count', '2.5', 'lakhs/cumm', '1.5 - 4.1', 'NORMAL'), 'normal')
   assert.equal(statusOf('Mean Platelet Volume', '15', 'fL', '7 - 11', 'HIGH'), 'high')
 })
+
+test('electrolytes and calcium have critical limits', () => {
+  assert.equal(statusOf('Potassium', '6.8', 'mmol/L', '3.5 - 5.1', 'HIGH'), 'critical_high')
+  assert.equal(statusOf('Sodium', '118', 'mEq/L', '135 - 145', 'LOW'), 'critical_low')
+  assert.equal(statusOf('Calcium', '14', 'mg/dL', '8.5 - 10.5', 'HIGH'), 'critical_high')
+  assert.equal(statusOf('Ionised Calcium', '14', 'mg/dL', '4.5 - 5.3', 'HIGH'), 'high')
+})
