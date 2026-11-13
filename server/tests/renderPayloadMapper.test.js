@@ -75,3 +75,19 @@ test('buildRenderPayload flags pregnancy panels from the title or test names', (
   assert.equal(byTest.patient.isPregnancyPanel, true)
   assert.equal(neither.patient.isPregnancyPanel, false)
 })
+
+test('buildRenderPayload skips findings that cannot be drawn on a scale', () => {
+  const p = buildRenderPayload({
+    report,
+    structuredData: [
+      finding('HIV', 'Non Reactive', '', 'Non Reactive'),
+      finding('Urine sugar', 'Nil', '', 'Negative'),
+      finding('Glucose', '95', 'mg/dL', 'Negative'),
+      finding('Haemoglobin', '13.5', 'g/dL', '13 - 17'),
+    ],
+    user: null,
+    ageYears: 40,
+  })
+  assert.deepEqual(p.findings.map((f) => f.valueName), ['Haemoglobin'])
+  assert.deepEqual(p.findings[0].referenceRange, { low: 13, high: 17 })
+})
