@@ -30,3 +30,16 @@ test('isValidPhone accepts US numbers', () => {
 test('isValidPhone rejects junk', () => {
   for (const v of ['', '+91 98765 43210', 'abc', '+449876543210']) assert.equal(isValidPhone(v), false)
 })
+
+test('the +910000000000 test number only works outside production', () => {
+  const before = process.env.NODE_ENV
+  try {
+    process.env.NODE_ENV = 'development'
+    assert.equal(isValidPhone('+910000000000'), true)
+    process.env.NODE_ENV = 'production'
+    assert.equal(isValidPhone('+910000000000'), false)
+  } finally {
+    if (before === undefined) delete process.env.NODE_ENV
+    else process.env.NODE_ENV = before
+  }
+})
