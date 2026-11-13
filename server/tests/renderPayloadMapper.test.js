@@ -40,3 +40,14 @@ test('parseNormalRange: text-only ranges are null, unknown shapes are open', () 
   assert.deepEqual(parseNormalRange(''), { low: null, high: null })
   assert.deepEqual(parseNormalRange(undefined), { low: null, high: null })
 })
+
+const report = { id: 'r1', report_title: 'Complete Blood Count — Dr Lal PathLabs', report_date: '2026-10-01' }
+const finding = (test, value, unit, normal_range = '', flag = 'NORMAL') => ({ test, value, unit, normal_range, flag })
+const statusOf = (...args) => buildRenderPayload({ report, structuredData: [finding(...args)], user: null, ageYears: 40 }).findings[0].status
+
+test('buildRenderPayload splits the report title into type and lab', () => {
+  const p = buildRenderPayload({ report, structuredData: [], user: null, ageYears: 40 })
+  assert.equal(p.report.type, 'Complete Blood Count')
+  assert.equal(p.report.lab, 'Dr Lal PathLabs')
+  assert.equal(p.report.date, '2026-10-01')
+})
