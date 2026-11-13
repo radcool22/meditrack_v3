@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { getLanguage } from '../config/languages'
@@ -17,6 +17,13 @@ function PhoneIcon({ className = 'w-5 h-5' }) {
 
 // One-time agreement before MediTrack first rings the user.
 function ConsentSheet({ phone, onAgree, onCancel, busy }) {
+  // Escape closes the sheet, like tapping outside it.
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onCancel() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCancel])
+
   const points = [
     <>MediTrack will call <b className="text-ink-900">{phone}</b>, the number on your account.</>,
     <>Your results are spoken out loud, so take the call somewhere private.</>,
