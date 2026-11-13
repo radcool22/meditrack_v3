@@ -110,3 +110,10 @@ test('critical checks need the expected unit and skip urine tests', () => {
   assert.equal(statusOf('Glucose Fasting', '25', 'mmol/L', '3.9 - 5.5', 'HIGH'), 'high')
   assert.equal(statusOf('Urine Glucose', '500', 'mg/dL', '0 - 15', 'HIGH'), 'high')
 })
+
+test('haemoglobin is critical below 7 g/dL, but HbA1c is never treated as haemoglobin', () => {
+  assert.equal(statusOf('Haemoglobin', '6.2', 'g/dL', '12 - 15', 'LOW'), 'critical_low')
+  assert.equal(statusOf('Hemoglobin (Hb)', '9.5', 'g/dL', '12 - 15', 'LOW'), 'low')
+  assert.equal(statusOf('Glycated Haemoglobin (HbA1c)', '25', 'g/dL', '< 5.7', 'HIGH'), 'high')
+  assert.equal(statusOf('Mean Corpuscular Haemoglobin', '35', 'g/dL', '27 - 32', 'HIGH'), 'high')
+})
