@@ -99,3 +99,14 @@ test('lab flags map to high / low / normal', () => {
   assert.equal(statusOf('TSH', '2.1', 'uIU/mL', '0.4 - 4.0', 'UNKNOWN'), 'normal')
   assert.equal(statusOf('TSH', '2.1', 'uIU/mL', '0.4 - 4.0', undefined), 'normal')
 })
+
+test('dangerously high or low blood sugar is critical', () => {
+  assert.equal(statusOf('Glucose Fasting', '450', 'mg/dL', '70 - 100', 'HIGH'), 'critical_high')
+  assert.equal(statusOf('Blood Sugar Random', '42', 'mg/dL', '70 - 140', 'LOW'), 'critical_low')
+  assert.equal(statusOf('Glucose Fasting', '180', 'mg/dL', '70 - 100', 'HIGH'), 'high')
+})
+
+test('critical checks need the expected unit and skip urine tests', () => {
+  assert.equal(statusOf('Glucose Fasting', '25', 'mmol/L', '3.9 - 5.5', 'HIGH'), 'high')
+  assert.equal(statusOf('Urine Glucose', '500', 'mg/dL', '0 - 15', 'HIGH'), 'high')
+})
