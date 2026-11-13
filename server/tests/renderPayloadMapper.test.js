@@ -18,3 +18,9 @@ test('parseValue handles Indian digit grouping and trailing units', () => {
 test('parseValue returns NaN for text and qualified results', () => {
   for (const v of ['Negative', 'Reactive', '<5.0', '>100', '', null, undefined]) assert.ok(Number.isNaN(parseValue(v)), String(v))
 })
+
+test('parseNormalRange reads low–high ranges', () => {
+  assert.deepEqual(parseNormalRange('13.0 - 17.0'), { low: 13, high: 17 })
+  assert.deepEqual(parseNormalRange('70 to 100 mg/dL'), { low: 70, high: 100 })
+  assert.deepEqual(parseNormalRange('1,50,000 – 4,10,000'), { low: 150000, high: 410000 })
+})
