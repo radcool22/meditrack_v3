@@ -14,3 +14,7 @@ test('parseValue handles Indian digit grouping and trailing units', () => {
   assert.equal(parseValue('142 mg/dL'), 142)
   assert.equal(parseValue('  13.5 g/dL '), 13.5)
 })
+
+test('parseValue returns NaN for text and qualified results', () => {
+  for (const v of ['Negative', 'Reactive', '<5.0', '>100', '', null, undefined]) assert.ok(Number.isNaN(parseValue(v)), String(v))
+})
