@@ -4,3 +4,4 @@ dist/
 .DS_Store
 e2e/shots/
 e2e/chrome-*/
+.claude/settings.local.json
