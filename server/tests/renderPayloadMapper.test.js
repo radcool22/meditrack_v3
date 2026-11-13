@@ -32,3 +32,11 @@ test('parseNormalRange reads one-sided ranges', () => {
   assert.deepEqual(parseNormalRange('> 40'), { low: 40, high: null })
   assert.deepEqual(parseNormalRange('more than 40'), { low: 40, high: null })
 })
+
+test('parseNormalRange: text-only ranges are null, unknown shapes are open', () => {
+  assert.equal(parseNormalRange('Negative'), null)
+  assert.equal(parseNormalRange('Reactive/Non-Reactive'), null)
+  assert.deepEqual(parseNormalRange('Male: 13-17'), { low: null, high: null })
+  assert.deepEqual(parseNormalRange(''), { low: null, high: null })
+  assert.deepEqual(parseNormalRange(undefined), { low: null, high: null })
+})
