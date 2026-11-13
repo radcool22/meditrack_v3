@@ -22,3 +22,23 @@ npm run dev                          # client on :3000, server on :5001
 ```
 
 Database migrations are in `server/migrations/` — run them in the Supabase SQL editor.
+
+## Tests
+
+```bash
+cd server && npm test                                          # unit tests
+cd e2e && node --import ./fakes/register.mjs api-tests.mjs     # API end-to-end (all services faked)
+cd e2e && node --import ./fakes/register.mjs browser-tests.mjs # browser end-to-end (build the client first)
+```
+
+See `e2e/README.md` for how the fakes work.
+
+## Deploying
+
+Pushing to `main` deploys the app to Fly.io (`.github/workflows/fly-deploy.yml`). Secrets are set with `fly secrets set`. The homepage in `meditrack_home/` is hosted separately on Netlify.
+
+## More
+
+- `CLAUDE.md` — architecture, data model and rules for contributors
+- `docs/voice-agent-setup.md` — the phone agent's prompt and settings
+- `docs/render-service-spec.md` — the video render service
