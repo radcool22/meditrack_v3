@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test 'tests/*.test.js'"
   },
   "dependencies": {
     "@google-cloud/vision": "^4.3.2",
