@@ -66,3 +66,12 @@ test('buildRenderPayload uses only the first name', () => {
   const p = buildRenderPayload({ report, structuredData: [], user: { name: ' Asha  Rani Verma ' }, ageYears: 60 })
   assert.equal(p.patient.firstName, 'Asha')
 })
+
+test('buildRenderPayload flags pregnancy panels from the title or test names', () => {
+  const byTitle = buildRenderPayload({ report: { id: 'a', report_title: 'Antenatal Profile' }, structuredData: [], user: null, ageYears: 28 })
+  const byTest  = buildRenderPayload({ report: { id: 'b', report_title: 'Blood test' }, structuredData: [finding('Beta HCG', '1200', 'mIU/mL')], user: null, ageYears: 28 })
+  const neither = buildRenderPayload({ report, structuredData: [finding('Haemoglobin', '13', 'g/dL')], user: null, ageYears: 28 })
+  assert.equal(byTitle.patient.isPregnancyPanel, true)
+  assert.equal(byTest.patient.isPregnancyPanel, true)
+  assert.equal(neither.patient.isPregnancyPanel, false)
+})
