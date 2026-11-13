@@ -1,7 +1,7 @@
 import { randomInt } from 'crypto'
 
 export function generateOtp() {
-  return String(randomInt(100000, 999999))
+  return String(randomInt(100000, 1000000))
 }
 
 export function isValidPhone(phone) {
