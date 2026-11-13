@@ -91,3 +91,11 @@ test('buildRenderPayload skips findings that cannot be drawn on a scale', () => 
   assert.deepEqual(p.findings.map((f) => f.valueName), ['Haemoglobin'])
   assert.deepEqual(p.findings[0].referenceRange, { low: 13, high: 17 })
 })
+
+test('lab flags map to high / low / normal', () => {
+  assert.equal(statusOf('Vitamin D', '12', 'ng/mL', '30 - 100', 'LOW'), 'low')
+  assert.equal(statusOf('LDL', '180', 'mg/dL', '< 100', 'HIGH'), 'high')
+  assert.equal(statusOf('ESR', '40', 'mm/hr', '0 - 20', 'ABNORMAL'), 'high')
+  assert.equal(statusOf('TSH', '2.1', 'uIU/mL', '0.4 - 4.0', 'UNKNOWN'), 'normal')
+  assert.equal(statusOf('TSH', '2.1', 'uIU/mL', '0.4 - 4.0', undefined), 'normal')
+})
