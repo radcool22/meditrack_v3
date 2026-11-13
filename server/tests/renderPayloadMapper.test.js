@@ -117,3 +117,11 @@ test('haemoglobin is critical below 7 g/dL, but HbA1c is never treated as haemog
   assert.equal(statusOf('Glycated Haemoglobin (HbA1c)', '25', 'g/dL', '< 5.7', 'HIGH'), 'high')
   assert.equal(statusOf('Mean Corpuscular Haemoglobin', '35', 'g/dL', '27 - 32', 'HIGH'), 'high')
 })
+
+test('platelet counts are critical in every way Indian labs print them', () => {
+  assert.equal(statusOf('Platelet Count', '15,000', '/cumm', '1,50,000 - 4,10,000', 'LOW'), 'critical_low')
+  assert.equal(statusOf('Platelet Count', '15', 'x10^3/uL', '150 - 410', 'LOW'), 'critical_low')
+  assert.equal(statusOf('Platelet Count', '0.15', 'lakhs/cumm', '1.5 - 4.1', 'LOW'), 'critical_low')
+  assert.equal(statusOf('Platelet Count', '2.5', 'lakhs/cumm', '1.5 - 4.1', 'NORMAL'), 'normal')
+  assert.equal(statusOf('Mean Platelet Volume', '15', 'fL', '7 - 11', 'HIGH'), 'high')
+})
