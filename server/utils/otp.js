@@ -12,6 +12,3 @@ export function isValidPhone(phone) {
   if (/^\+1\d{10}$/.test(phone)) return true
   return false
 }
-
-/** @deprecated use isValidPhone */
-export const isValidIndianPhone = isValidPhone
